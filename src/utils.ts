@@ -1,5 +1,9 @@
 import type { LatLon, Altitude } from './types'
 
+// Hoisted RegExp for hot-path parsing functions
+const LAT_LON_RE = /^([NS])(\d{2}):([0-5]\d(?:\.\d+)?)\s+([EW])(\d{3}):([0-5]\d(?:\.\d+)?)$/
+const TIME_Z_RE = /^(\d{2}):(\d{2}):(\d{2})Z$/
+
 export const AOR = {
   // N01:18.00 E121:08.00 etc
   nw: { lat: 1 + 18/60, lon: 121 + 8/60 },
@@ -21,7 +25,7 @@ export function uid(prefix='id') {
 export function parseLatLon(s: string): LatLon | null {
   // Example: N00:33.00 E121:33.00
   // Accepts N/S and E/W with DD:MM.MM
-  const m = s.trim().match(/^([NS])(\d{2}):([0-5]\d(?:\.\d+)?)\s+([EW])(\d{3}):([0-5]\d(?:\.\d+)?)$/)
+  const m = s.trim().match(LAT_LON_RE)
   if (!m) return null
   const latDeg = parseInt(m[2], 10)
   const latMin = parseFloat(m[3])
@@ -44,7 +48,7 @@ export function toHHMMSS(totalSeconds: number) {
 
 export function parseTimeZ(t: string): number {
   // "13:05:00Z" -> seconds from midnight
-  const m = t.trim().match(/^(\d{2}):(\d{2}):(\d{2})Z$/)
+  const m = t.trim().match(TIME_Z_RE)
   if (!m) return 0
   return parseInt(m[1],10)*3600 + parseInt(m[2],10)*60 + parseInt(m[3],10)
 }
