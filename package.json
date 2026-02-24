@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "biome format --write ./src",
+    "check": "biome check --write ./src"
   },
   "dependencies": {
     "@accelint/bus": "^3.0.2",
