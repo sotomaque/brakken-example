@@ -28,9 +28,9 @@ export type AirspaceReservation = {
   altitude: Altitude
   keypads: string[] // expanded keypad IDs like "23AF5"
   displayText?: string // original operator string when edited in table
-  geometry: GeoJSON.Polygon 
+  geometry: GeoJSON.Polygon
   showCold?: boolean // <--- NEW: toggles visibility for COLD state
-  color?: string     // <--- NEW: custom hex color
+  color?: string // <--- NEW: custom hex color
   showFill?: boolean // <--- NEW: toggles the transparent fill
   lineWidth?: number // <--- NEW: custom line thickness
 }

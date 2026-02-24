@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react'
 import { Button } from '@accelint/design-toolkit'
-import { PanelOpen, PanelClosed } from '@accelint/icons'
+import { PanelClosed, PanelOpen } from '@accelint/icons'
+import { useEffect, useState } from 'react'
+import CreateAirspaceModal from './CreateAirspaceModal'
+import HoverAndChat from './HoverAndChat'
 import MapView from './MapView'
 import RightPanel from './RightPanel'
-import HoverAndChat from './HoverAndChat'
-import CreateAirspaceModal from './CreateAirspaceModal'
-import { useAppStore, type EditMode } from './store'
+import { type EditMode, useAppStore } from './store'
 import { deriveKeypadsFromPolygon } from './utils'
 
 type PendingCreate =
   | null
   | { kind: 'KEYPAD' }
-  | { kind: 'FREEDRAW'; drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number, number][] }
+  | { kind: 'FREEDRAW'; drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] }
 
-const S_GRID = { display:'grid', gridTemplateRows:'1fr auto', height:'100%' } as const
+const S_GRID = { display: 'grid', gridTemplateRows: '1fr auto', height: '100%' } as const
 
 export default function App() {
   const [pending, setPending] = useState<PendingCreate>(null)
@@ -39,27 +39,30 @@ export default function App() {
           return
         }
 
-        setPending({ kind:'FREEDRAW', drawType: detail.drawType, coords: detail.coords })
+        setPending({ kind: 'FREEDRAW', drawType: detail.drawType, coords: detail.coords })
         if (detail.drawType === 'POLYGON') {
           setModalTitle('Create Airspace (free-draw polygon)')
           setModalNote('Polygon created. Enter callsign + altitude to create the airspace.')
           setModalOpen(true)
         } else {
-          const label = detail.drawType === 'ROUTE' ? `Route-${new Date().toISOString().slice(11,19)}` : `Point-${new Date().toISOString().slice(11,19)}`
+          const label =
+            detail.drawType === 'ROUTE'
+              ? `Route-${new Date().toISOString().slice(11, 19)}`
+              : `Point-${new Date().toISOString().slice(11, 19)}`
           if (detail.drawType === 'ROUTE') {
             useAppStore.getState().addShape({
               label,
               shapeType: 'ROUTE',
               tags: [],
-              geometry: { type:'LineString', coordinates: detail.coords },
+              geometry: { type: 'LineString', coordinates: detail.coords },
             })
           } else {
-            const p = detail.coords[detail.coords.length-1] ?? detail.coords[0]
+            const p = detail.coords[detail.coords.length - 1] ?? detail.coords[0]
             useAppStore.getState().addShape({
               label,
               shapeType: 'POINT',
               tags: [],
-              geometry: { type:'Point', coordinates: p },
+              geometry: { type: 'Point', coordinates: p },
             })
           }
           useAppStore.getState().setMode('SELECT')
@@ -82,26 +85,35 @@ export default function App() {
     return unsub
   }, [])
 
-  function applyRedraw(em: Extract<EditMode, { kind: 'REDRAW_GEOMETRY' }>, detail: { drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number, number][] }) {
+  function applyRedraw(
+    em: Extract<EditMode, { kind: 'REDRAW_GEOMETRY' }>,
+    detail: { drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] },
+  ) {
     const st = useAppStore.getState()
     if (em.targetType === 'AIRSPACE') {
-      const src = st.airspaces.find(a=>a.id===em.targetId)
+      const src = st.airspaces.find(a => a.id === em.targetId)
       if (!src) return
       if (detail.drawType !== 'POLYGON') return
-      const poly: GeoJSON.Polygon = { type:'Polygon', coordinates:[[...detail.coords, detail.coords[0]]] }
+      const poly: GeoJSON.Polygon = {
+        type: 'Polygon',
+        coordinates: [[...detail.coords, detail.coords[0]]],
+      }
       const keypads = deriveKeypadsFromPolygon(poly).sort()
       st.updateAirspace(em.targetId, { geometry: poly, keypads, kind: 'FREEDRAW' })
     } else {
-      const src = st.shapes.find(s=>s.id===em.targetId)
+      const src = st.shapes.find(s => s.id === em.targetId)
       if (!src) return
       if (detail.drawType === 'POLYGON') {
-        const poly: GeoJSON.Polygon = { type:'Polygon', coordinates:[[...detail.coords, detail.coords[0]]] }
+        const poly: GeoJSON.Polygon = {
+          type: 'Polygon',
+          coordinates: [[...detail.coords, detail.coords[0]]],
+        }
         st.updateShapeGeometry(em.targetId, poly)
       } else if (detail.drawType === 'ROUTE') {
-        st.updateShapeGeometry(em.targetId, { type:'LineString', coordinates: detail.coords })
+        st.updateShapeGeometry(em.targetId, { type: 'LineString', coordinates: detail.coords })
       } else {
-        const p = detail.coords[detail.coords.length-1] ?? detail.coords[0]
-        st.updateShapeGeometry(em.targetId, { type:'Point', coordinates: p })
+        const p = detail.coords[detail.coords.length - 1] ?? detail.coords[0]
+        st.updateShapeGeometry(em.targetId, { type: 'Point', coordinates: p })
       }
     }
   }
@@ -114,9 +126,21 @@ export default function App() {
           variant="icon"
           size="small"
           onPress={() => setPanelOpen(v => !v)}
-          style={{ position: 'absolute', top: 10, left: 10, zIndex: 6, background: 'rgba(18,25,35,0.92)', border: '1px solid var(--border)', borderRadius: 8 }}
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 6,
+            background: 'rgba(18,25,35,0.92)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+          }}
         >
-          {panelOpen ? <PanelOpen width={16} height={16} /> : <PanelClosed width={16} height={16} />}
+          {panelOpen ? (
+            <PanelOpen width={16} height={16} />
+          ) : (
+            <PanelClosed width={16} height={16} />
+          )}
         </Button>
       </div>
 
@@ -133,7 +157,11 @@ export default function App() {
         open={modalOpen}
         title={modalTitle}
         note={modalNote}
-        onClose={() => { setModalOpen(false); setPending(null); setModalNote(undefined) }}
+        onClose={() => {
+          setModalOpen(false)
+          setPending(null)
+          setModalNote(undefined)
+        }}
         onCreate={({ callsign, altitude, state }) => {
           if (!pending) return
           if (pending.kind === 'KEYPAD') {
@@ -141,8 +169,10 @@ export default function App() {
           } else if (pending.kind === 'FREEDRAW' && pending.drawType === 'POLYGON') {
             const coords = pending.coords
             if (coords.length < 3) return
-            const poly: GeoJSON.Polygon = { type:'Polygon', coordinates:[[...coords, coords[0]]] }
-            useAppStore.getState().createAirspaceFromPolygon({ callsign, altitude, state, polygon: poly })
+            const poly: GeoJSON.Polygon = { type: 'Polygon', coordinates: [[...coords, coords[0]]] }
+            useAppStore
+              .getState()
+              .createAirspaceFromPolygon({ callsign, altitude, state, polygon: poly })
           }
           useAppStore.getState().setMode('SELECT')
         }}

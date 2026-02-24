@@ -1,8 +1,8 @@
-import { memo, useMemo } from 'react'
 import { Button, Checkbox, TextField } from '@accelint/design-toolkit'
-import { useAppStore } from './store'
+import { memo, useMemo } from 'react'
 import { SCENARIO } from './scenario'
-import { parseTimeZ, toHHMMSS, fmtAlt } from './utils'
+import { useAppStore } from './store'
+import { fmtAlt, parseTimeZ, toHHMMSS } from './utils'
 
 export default memo(function HoverAndChat() {
   // Granular selectors -- only re-render when these specific slices change
@@ -18,22 +18,29 @@ export default memo(function HoverAndChat() {
   const toggleHandled = useAppStore(s => s.toggleHandled)
 
   const events = useMemo(() => {
-    return [...SCENARIO.events].sort((a,b)=>parseTimeZ(a.timeZ)-parseTimeZ(b.timeZ))
+    return [...SCENARIO.events].sort((a, b) => parseTimeZ(a.timeZ) - parseTimeZ(b.timeZ))
   }, [])
 
-  const visibleEvents = useMemo(() => events.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec), [events, currentTimeSec])
+  const visibleEvents = useMemo(
+    () => events.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec),
+    [events, currentTimeSec],
+  )
 
   const hoverText = useMemo(() => {
-    if (hover.kind === 'NONE') return 'Hover a keypad / airspace / reference point to see details here.'
+    if (hover.kind === 'NONE')
+      return 'Hover a keypad / airspace / reference point to see details here.'
 
     if (hover.kind === 'REF') {
       return `${hover.keypadId}/${hover.label.toUpperCase()}`
     }
 
     if (hover.kind === 'AIRSPACE') {
-      const a = airspaces.find(x=>x.id===hover.airspaceId)
+      const a = airspaces.find(x => x.id === hover.airspaceId)
       if (!a) return 'Unknown airspace'
-      const alt = a.altitude.kind==='SINGLE' ? `${a.altitude.singleFt}` : `${a.altitude.minFt}-${a.altitude.maxFt}`
+      const alt =
+        a.altitude.kind === 'SINGLE'
+          ? `${a.altitude.singleFt}`
+          : `${a.altitude.minFt}-${a.altitude.maxFt}`
       const kp = a.keypads.slice().sort().join(' ')
       return `${a.ownerCallsign}
 ${a.state} ${a.kind}
@@ -42,7 +49,7 @@ ${kp}`
     }
 
     if (hover.kind === 'SHAPE') {
-      const s = shapes.find(x=>x.id===hover.shapeId)
+      const s = shapes.find(x => x.id === hover.shapeId)
       if (!s) return 'Unknown shape'
       const tags = s.tags.join(',')
       const kp = s.derivedKeypads.slice().sort().join(' ')
@@ -57,13 +64,14 @@ ${kp}`
         if (scope.kind === 'AOR') return true
         if (scope.kind === 'KILLBOX') return kp.startsWith(scope.killbox)
         if (scope.kind === 'AREA') {
-          const area = shapes.find(s=>s.id===scope.areaId)
+          const area = shapes.find(s => s.id === scope.areaId)
           const set = new Set(area?.derivedKeypads ?? [])
           return set.has(kp)
         }
         return true
       }
-      if (!inScope(keypadId)) return `${keypadId}
+      if (!inScope(keypadId))
+        return `${keypadId}
 (out of scope)`
 
       const stack: { label: string; sortAlt: number }[] = []
@@ -72,19 +80,23 @@ ${kp}`
         if (!s.tags.includes('ROZ')) continue
         if (!s.derivedKeypads.includes(keypadId)) continue
         const alt = s.altitude ? fmtAlt(s.altitude) : 'SFC-??'
-        const sortAlt = s.altitude?.kind==='SINGLE' ? s.altitude.singleFt : (s.altitude?.maxFt ?? 999999)
+        const sortAlt =
+          s.altitude?.kind === 'SINGLE' ? s.altitude.singleFt : (s.altitude?.maxFt ?? 999999)
         stack.push({ label: `${s.label} ${alt}`, sortAlt })
       }
 
-      for (const a of airspaces.filter(a=>a.state!=='ARCHIVED')) {
+      for (const a of airspaces.filter(a => a.state !== 'ARCHIVED')) {
         if (!a.keypads.includes(keypadId)) continue
-        const alt = a.altitude.kind==='SINGLE' ? `${a.altitude.singleFt}` : `${a.altitude.minFt}-${a.altitude.maxFt}`
-        const sortAlt = a.altitude.kind==='SINGLE' ? a.altitude.singleFt : a.altitude.maxFt
+        const alt =
+          a.altitude.kind === 'SINGLE'
+            ? `${a.altitude.singleFt}`
+            : `${a.altitude.minFt}-${a.altitude.maxFt}`
+        const sortAlt = a.altitude.kind === 'SINGLE' ? a.altitude.singleFt : a.altitude.maxFt
         stack.push({ label: `${a.ownerCallsign} ${alt}`, sortAlt })
       }
 
-      stack.sort((x,y)=>y.sortAlt-x.sortAlt)
-      const lines = [keypadId, ...stack.map(s=>s.label)]
+      stack.sort((x, y) => y.sortAlt - x.sortAlt)
+      const lines = [keypadId, ...stack.map(s => s.label)]
       return lines.join('\n')
     }
 
@@ -101,41 +113,62 @@ ${kp}`
       <div className="chat">
         <div className="chatHeader">
           <h3>Scenario Prompts</h3>
-          <div style={{ display:'flex', gap: 8, alignItems:'center' }}>
-            <span style={{ color:'#9fb1c5', fontSize:12 }}>Zulu</span>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span
+              style={{
+                color: 'var(--muted)',
+                fontSize: 11,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Zulu
+            </span>
             <TextField
               size="small"
+              label="Zulu time"
+              aria-label="Zulu time"
               inputProps={{
                 value: toHHMMSS(currentTimeSec),
                 onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                   const m = e.target.value.match(/^(\d{2}):(\d{2}):(\d{2})$/)
                   if (!m) return
-                  const sec = parseInt(m[1],10)*3600 + parseInt(m[2],10)*60 + parseInt(m[3],10)
+                  const sec =
+                    parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseInt(m[3], 10)
                   setCurrentTimeSec(sec)
                 },
-                style: { width: 110 },
+                style: {
+                  width: 100,
+                  fontFamily: "'Roboto Mono Variable', monospace",
+                  fontSize: 12,
+                },
               }}
             />
-            <Button variant="outline" size="small" onPress={() => setCurrentTimeSec(Math.max(0, currentTimeSec-30))}>
+            <Button
+              variant="outline"
+              size="small"
+              onPress={() => setCurrentTimeSec(Math.max(0, currentTimeSec - 30))}
+            >
               -30s
             </Button>
-            <Button variant="outline" size="small" onPress={() => setCurrentTimeSec(currentTimeSec+30)}>
+            <Button
+              variant="outline"
+              size="small"
+              onPress={() => setCurrentTimeSec(currentTimeSec + 30)}
+            >
               +30s
             </Button>
           </div>
         </div>
 
-        {visibleEvents.map((e) => {
-          const key = `${e.timeZ}::${e.text.slice(0,18)}`
+        {visibleEvents.map(e => {
+          const key = `${e.timeZ}::${e.text.slice(0, 18)}`
           const handled = !!handledEventIds[key]
           return (
             <div key={key} className="event">
               <div className="eventTop">
                 <div className="time">{e.timeZ}</div>
-                <Checkbox
-                  isSelected={handled}
-                  onChange={() => toggleHandled(key)}
-                >
+                <Checkbox isSelected={handled} onChange={() => toggleHandled(key)}>
                   handled
                 </Checkbox>
               </div>

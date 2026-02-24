@@ -10,18 +10,34 @@
   --accent: #4ba3ff;
 }
 
-* { box-sizing: border-box; }
-html, body {
+* {
+  box-sizing: border-box;
+}
+html,
+body {
   margin: 0;
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Roboto Flex Variable', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    "Roboto Flex Variable",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'liga' 1, 'calt' 1;
+  font-feature-settings:
+    "liga" 1,
+    "calt" 1;
 }
-#root { height: 100%; }
+#root {
+  height: 100%;
+}
 
 /* ───── App grid layout ───── */
 .app {
@@ -31,7 +47,9 @@ html, body {
   height: 100vh;
   min-height: 100vh;
 }
-.app > * { min-height: 0; }
+.app > * {
+  min-height: 0;
+}
 
 /* ───── Map container ───── */
 .mapWrap {
@@ -66,6 +84,7 @@ html, body {
   gap: 8px;
   align-items: center;
   justify-content: space-between;
+  background: var(--panel2);
 }
 
 .controlsRow {
@@ -94,8 +113,18 @@ html, body {
   padding: 10px 12px;
   overflow: auto;
 }
-.block h3 { margin: 0 0 8px 0; font-size: 13px; color: var(--muted); }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap; }
+.block h3 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.mono {
+  font-family:
+    "Roboto Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
 
 .chat {
   padding: 10px 12px;
@@ -107,13 +136,21 @@ html, body {
   align-items: center;
   margin-bottom: 8px;
 }
-.chatHeader h3 { margin: 0; font-size: 13px; color: var(--muted); }
+.chatHeader h3 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
 .event {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px;
+  border-radius: 8px;
+  padding: 10px;
   margin-bottom: 8px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.025);
+  transition: background 0.15s;
+}
+.event:hover {
+  background: rgba(255, 255, 255, 0.045);
 }
 .eventTop {
   display: flex;
@@ -122,7 +159,11 @@ html, body {
   align-items: center;
   margin-bottom: 6px;
 }
-.eventTop .time { color: var(--muted); font-size: 12px; }
+.eventTop .time {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ───── Map overlay panels ───── */
 .mapOverlays {
@@ -141,14 +182,18 @@ html, body {
 
 /* Shortcuts legend */
 .legend {
-  background: rgba(18,25,35,0.92);
+  background: rgba(18, 25, 35, 0.92);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px;
   min-width: 260px;
   backdrop-filter: blur(6px);
 }
-.legend h4 { margin: 0; font-size: 12px; color: var(--muted); }
+.legend h4 {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
 .legend .row {
   display: flex;
   align-items: center;
@@ -172,18 +217,31 @@ html, body {
 /* Grid & Layers panel */
 .mapTools {
   width: 280px;
-  background: rgba(18,25,35,0.92);
+  background: rgba(18, 25, 35, 0.92);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px;
   backdrop-filter: blur(6px);
 }
-.mapTools h4 { margin: 0; font-size: 12px; color: var(--muted); }
-.mapTools .section { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+.mapTools h4 {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mapTools .section {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
 
 /* Compact design-toolkit components inside overlay panel */
-.mapTools label { font-size: 12px; color: var(--muted); }
-.mapTools [data-rac] { font-size: 12px; }
+.mapTools label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.mapTools [data-rac] {
+  font-size: 12px;
+}
 
 /* Switch components — fix track visibility & state in overlay.
    The design-toolkit's CSS module scopes the Tailwind group/switch class,
@@ -197,27 +255,31 @@ html, body {
   cursor: pointer;
 }
 .mapTools label.group\/switch > span:first-child {
-  background-color: rgba(255,255,255,0.06);
-  outline: 1.5px solid rgba(159,177,197,0.25);
+  background-color: rgba(255, 255, 255, 0.06);
+  outline: 1.5px solid rgba(159, 177, 197, 0.25);
   outline-offset: -1px;
   border-radius: 80px;
   padding: 2px;
   display: flex;
   flex-shrink: 0;
-  transition: background-color 0.15s, outline-color 0.15s;
+  transition:
+    background-color 0.15s,
+    outline-color 0.15s;
 }
 .mapTools label.group\/switch > span:first-child::before {
-  content: '';
+  content: "";
   display: block;
   width: 12px;
   height: 12px;
   border-radius: 9999px;
   background-color: var(--muted);
   margin-right: 14px;
-  transition: margin 0.15s, background-color 0.15s;
+  transition:
+    margin 0.15s,
+    background-color 0.15s;
 }
 .mapTools label.group\/switch[data-selected] > span:first-child {
-  background-color: rgba(75,163,255,0.15);
+  background-color: rgba(75, 163, 255, 0.15);
   outline-color: var(--accent);
 }
 .mapTools label.group\/switch[data-selected] > span:first-child::before {
@@ -226,11 +288,11 @@ html, body {
   background-color: var(--accent);
 }
 .mapTools label.group\/switch:hover > span:first-child {
-  background-color: rgba(255,255,255,0.10);
-  outline-color: rgba(159,177,197,0.4);
+  background-color: rgba(255, 255, 255, 0.1);
+  outline-color: rgba(159, 177, 197, 0.4);
 }
 .mapTools label.group\/switch[data-selected]:hover > span:first-child {
-  background-color: rgba(75,163,255,0.22);
+  background-color: rgba(75, 163, 255, 0.22);
   outline-color: var(--accent);
 }
 
@@ -252,22 +314,68 @@ html, body {
 /* ───── SelectField polish (dark context) ───── */
 .controlsRow button[data-rac],
 .mapTools button[data-rac] {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
   font-size: 12px;
   padding: 4px 8px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 .controlsRow button[data-rac]:hover,
 .mapTools button[data-rac]:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(159,177,197,0.35);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(159, 177, 197, 0.35);
 }
 .controlsRow label[data-rac]:not(.group\/switch),
 .mapTools label[data-rac]:not(.group\/switch) {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ───── Scrollbar styling ───── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(159, 177, 197, 0.18);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(159, 177, 197, 0.3);
+}
+
+/* ───── Right-panel input & accordion polish ───── */
+.controlsRow input[data-rac],
+.table input[data-rac] {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  transition: border-color 0.15s;
+}
+.controlsRow input[data-rac]:focus,
+.table input[data-rac]:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* Accordion row spacing & selection */
+.table [data-rac][role="region"] {
+  border-top: 1px solid var(--border);
+}
+
+/* Section label in accordion body */
+.table [role="group"][data-rac] label {
   font-size: 12px;
   color: var(--muted);
 }

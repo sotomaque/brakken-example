@@ -1,4 +1,3 @@
-import { memo, useState } from 'react'
 import {
   Button,
   Dialog,
@@ -9,7 +8,8 @@ import {
   SelectField,
   TextField,
 } from '@accelint/design-toolkit'
-import type { Altitude, AirspaceState } from './types'
+import { memo, useState } from 'react'
+import type { AirspaceState, Altitude } from './types'
 
 type Props = {
   open: boolean
@@ -20,23 +20,33 @@ type Props = {
   note?: string
 }
 
-export default memo(function CreateAirspaceModal({ open, title, defaultCallsign, onClose, onCreate, note }: Props) {
+export default memo(function CreateAirspaceModal({
+  open,
+  title,
+  defaultCallsign,
+  onClose,
+  onCreate,
+  note,
+}: Props) {
   const [callsign, setCallsign] = useState(defaultCallsign ?? '')
   const [state, setState] = useState<AirspaceState>('PLANNED')
-  const [altMode, setAltMode] = useState<'SINGLE'|'BLOCK'>('SINGLE')
+  const [altMode, setAltMode] = useState<'SINGLE' | 'BLOCK'>('SINGLE')
   const [singleFt, setSingleFt] = useState(3000)
   const [minFt, setMinFt] = useState(0)
   const [maxFt, setMaxFt] = useState(22000)
 
   // Compute inline instead of useMemo -- trivial conditional (fix 5d)
-  const altitude: Altitude = altMode === 'SINGLE'
-    ? { kind:'SINGLE', singleFt: Number(singleFt) }
-    : { kind:'BLOCK', minFt: Number(minFt), maxFt: Number(maxFt) }
+  const altitude: Altitude =
+    altMode === 'SINGLE'
+      ? { kind: 'SINGLE', singleFt: Number(singleFt) }
+      : { kind: 'BLOCK', minFt: Number(minFt), maxFt: Number(maxFt) }
 
   return (
     <Dialog
       isOpen={open}
-      onOpenChange={(isOpen) => { if (!isOpen) onClose() }}
+      onOpenChange={isOpen => {
+        if (!isOpen) onClose()
+      }}
       isDismissable
       size="small"
     >
@@ -44,7 +54,11 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
         <>
           <DialogTitle>{title}</DialogTitle>
           <DialogContent>
-            {note && <p className="fg-primary-muted text-body-s" style={{ margin: '0 0 12px 0' }}>{note}</p>}
+            {note && (
+              <p className="fg-primary-muted text-body-s" style={{ margin: '0 0 12px 0' }}>
+                {note}
+              </p>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <TextField
                 label="Callsign / Name"
@@ -58,7 +72,7 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
               <SelectField
                 label="State"
                 selectedKey={state}
-                onSelectionChange={(key) => setState(key as AirspaceState)}
+                onSelectionChange={key => setState(key as AirspaceState)}
                 size="medium"
               >
                 <OptionsItem id="PLANNED">PLANNED</OptionsItem>
@@ -69,7 +83,7 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
               <SelectField
                 label="Altitude mode"
                 selectedKey={altMode}
-                onSelectionChange={(key) => setAltMode(key as 'SINGLE'|'BLOCK')}
+                onSelectionChange={key => setAltMode(key as 'SINGLE' | 'BLOCK')}
                 size="medium"
               >
                 <OptionsItem id="SINGLE">Single (ft)</OptionsItem>
@@ -82,7 +96,8 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
                   inputProps={{
                     type: 'number',
                     value: String(singleFt),
-                    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSingleFt(parseInt(e.target.value,10) || 0),
+                    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                      setSingleFt(parseInt(e.target.value, 10) || 0),
                   }}
                   size="medium"
                 />
@@ -93,7 +108,8 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
                     inputProps={{
                       type: 'number',
                       value: String(minFt),
-                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setMinFt(parseInt(e.target.value,10) || 0),
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                        setMinFt(parseInt(e.target.value, 10) || 0),
                     }}
                     size="medium"
                   />
@@ -102,7 +118,8 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
                     inputProps={{
                       type: 'number',
                       value: String(maxFt),
-                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setMaxFt(parseInt(e.target.value,10) || 0),
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                        setMaxFt(parseInt(e.target.value, 10) || 0),
                     }}
                     size="medium"
                   />
@@ -111,7 +128,14 @@ export default memo(function CreateAirspaceModal({ open, title, defaultCallsign,
             </div>
           </DialogContent>
           <DialogFooter>
-            <Button variant="outline" size="small" onPress={() => { close(); onClose() }}>
+            <Button
+              variant="outline"
+              size="small"
+              onPress={() => {
+                close()
+                onClose()
+              }}
+            >
               Cancel
             </Button>
             <Button

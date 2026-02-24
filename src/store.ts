@@ -1,12 +1,36 @@
 import { create } from 'zustand'
-import type { Aircraft, AirspaceReservation, FreeDrawShape, GridOptions, LayerToggles, Scope, Scenario } from './types'
-import { uid, polygonFromKeypads, deriveKeypadsFromPolygon, deriveKeypadsFromLine, deriveKeypadsFromPoint, parseKeypadString, altitudeConflicts } from './utils'
 import { SCENARIO } from './scenario'
-import type { Altitude } from './types'
+import type {
+  Aircraft,
+  AirspaceReservation,
+  Altitude,
+  FreeDrawShape,
+  GridOptions,
+  LayerToggles,
+  Scenario,
+  Scope,
+} from './types'
+import {
+  altitudeConflicts,
+  deriveKeypadsFromLine,
+  deriveKeypadsFromPoint,
+  deriveKeypadsFromPolygon,
+  parseKeypadString,
+  polygonFromKeypads,
+  uid,
+} from './utils'
 
 export type Mode = 'SELECT' | 'KEYPAD_SELECT' | 'FREEDRAW'
 export type DrawType = 'POLYGON' | 'ROUTE' | 'POINT'
-export type EditMode = null | { kind: 'EDIT_KEYPADS'; airspaceId: string } | { kind: 'REDRAW_GEOMETRY'; targetType: 'AIRSPACE'|'SHAPE'; targetId: string; drawType: 'POLYGON'|'ROUTE'|'POINT' }
+export type EditMode =
+  | null
+  | { kind: 'EDIT_KEYPADS'; airspaceId: string }
+  | {
+      kind: 'REDRAW_GEOMETRY'
+      targetType: 'AIRSPACE' | 'SHAPE'
+      targetId: string
+      drawType: 'POLYGON' | 'ROUTE' | 'POINT'
+    }
 
 export type HoverInfo =
   | { kind: 'NONE' }
@@ -17,7 +41,10 @@ export type HoverInfo =
 
 export type Conflict = { aId: string; bId: string; reason: string; overlappingKeypads: string[] }
 
-export type PendingDrawResult = { drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number,number][] } | null
+export type PendingDrawResult = {
+  drawType: 'POLYGON' | 'ROUTE' | 'POINT'
+  coords: [number, number][]
+} | null
 export type PendingKeypadResult = { keypads: string[] } | null
 
 type AppState = {
@@ -32,11 +59,11 @@ type AppState = {
   mode: Mode
   drawType: DrawType
   selectedKeypads: string[]
-  selectedId: { kind: 'AIRSPACE'|'SHAPE'|'AIRCRAFT'|null; id?: string }
+  selectedId: { kind: 'AIRSPACE' | 'SHAPE' | 'AIRCRAFT' | null; id?: string }
   editMode: EditMode
   hover: HoverInfo
   scope: Scope
-  activeTab: 'ACTIVE'|'PLANNED'|'ARCHIVED'
+  activeTab: 'ACTIVE' | 'PLANNED' | 'ARCHIVED'
   layerToggles: LayerToggles
   gridOptions: GridOptions
   picassoMode: boolean
@@ -74,10 +101,21 @@ type AppState = {
   startEditSelected: () => void
   cancelEdit: () => void
 
-  createAirspaceFromKeypads: (payload: { callsign: string; altitude: Altitude; state: AirspaceReservation['state']; displayText?: string }) => void
-  createAirspaceFromPolygon: (payload: { callsign: string; altitude: Altitude; state: AirspaceReservation['state']; polygon: GeoJSON.Polygon; displayText?: string }) => void
+  createAirspaceFromKeypads: (payload: {
+    callsign: string
+    altitude: Altitude
+    state: AirspaceReservation['state']
+    displayText?: string
+  }) => void
+  createAirspaceFromPolygon: (payload: {
+    callsign: string
+    altitude: Altitude
+    state: AirspaceReservation['state']
+    polygon: GeoJSON.Polygon
+    displayText?: string
+  }) => void
 
-  updateAirspace: (id: string, patch: Partial<Omit<AirspaceReservation,'id'>>) => void
+  updateAirspace: (id: string, patch: Partial<Omit<AirspaceReservation, 'id'>>) => void
   updateAirspaceKeypadString: (id: string, keypadText: string) => { ok: boolean; warning?: string }
   archiveSelected: () => void
   deleteAirspace: (id: string) => void
@@ -87,7 +125,7 @@ type AppState = {
   upsertAircraft: (callsign: string, patch?: Partial<Aircraft>) => void
   updateAircraft: (id: string, patch: Partial<Aircraft>) => void
 
-  addShape: (shape: Omit<FreeDrawShape,'id'|'derivedKeypads'>) => void
+  addShape: (shape: Omit<FreeDrawShape, 'id' | 'derivedKeypads'>) => void
   updateShapeGeometry: (id: string, geometry: FreeDrawShape['geometry']) => void
   deleteShape: (id: string) => void
 
@@ -136,7 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTab: 'ACTIVE',
   layerToggles: defaultLayers(),
   gridOptions: defaultGridOptions(),
-  currentTimeSec: 13*3600,
+  currentTimeSec: 13 * 3600,
   picassoMode: false,
   picassoRadius: 8,
   conflicts: [],
@@ -144,25 +182,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   pendingDrawResult: null,
   pendingKeypadResult: null,
 
-  setMode: (m) => set({ mode: m }),
-  setDrawType: (t) => set({ drawType: t }),
-  setHover: (h) => set({ hover: h }),
-  setScope: (s) => set({ scope: s }),
-  setActiveTab: (t) => set({ activeTab: t }),
+  setMode: m => set({ mode: m }),
+  setDrawType: t => set({ drawType: t }),
+  setHover: h => set({ hover: h }),
+  setScope: s => set({ scope: s }),
+  setActiveTab: t => set({ activeTab: t }),
   setLayerToggle: (k, v) => set({ layerToggles: { ...get().layerToggles, [k]: v } }),
-  setGridOptions: (p) => set({ gridOptions: { ...get().gridOptions, ...p } }),
-  togglePicassoMode: () => set((st) => ({ picassoMode: !st.picassoMode })),
-  setPicassoRadius: (r) => set({ picassoRadius: r }),
+  setGridOptions: p => set({ gridOptions: { ...get().gridOptions, ...p } }),
+  togglePicassoMode: () => set(st => ({ picassoMode: !st.picassoMode })),
+  setPicassoRadius: r => set({ picassoRadius: r }),
 
-  toggleKeypad: (id) => set((st) => {
-    const exists = st.selectedKeypads.includes(id)
-    const selectedKeypads = exists ? st.selectedKeypads.filter(k => k !== id) : [...st.selectedKeypads, id]
-    return { selectedKeypads }
-  }),
+  toggleKeypad: id =>
+    set(st => {
+      const exists = st.selectedKeypads.includes(id)
+      const selectedKeypads = exists
+        ? st.selectedKeypads.filter(k => k !== id)
+        : [...st.selectedKeypads, id]
+      return { selectedKeypads }
+    }),
   clearKeypads: () => set({ selectedKeypads: [] }),
 
-  selectAirspace: (id) => set({ selectedId: { kind: 'AIRSPACE', id } }),
-  selectShape: (id) => set({ selectedId: { kind: 'SHAPE', id } }),
+  selectAirspace: id => set({ selectedId: { kind: 'AIRSPACE', id } }),
+  selectShape: id => set({ selectedId: { kind: 'SHAPE', id } }),
   clearSelection: () => set({ selectedId: { kind: null } }),
 
   startEditSelected: () => {
@@ -170,13 +211,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (sel.kind === 'AIRSPACE' && sel.id) {
       const a = get().airspaces.find(x => x.id === sel.id)
       if (!a) return
-      if (a.kind === 'KEYPAD') set({ editMode: { kind: 'EDIT_KEYPADS', airspaceId: a.id }, mode: 'KEYPAD_SELECT' })
-      else set({ editMode: { kind: 'REDRAW_GEOMETRY', targetType: 'AIRSPACE', targetId: a.id, drawType: 'POLYGON' }, mode: 'FREEDRAW', drawType: 'POLYGON' })
+      if (a.kind === 'KEYPAD')
+        set({ editMode: { kind: 'EDIT_KEYPADS', airspaceId: a.id }, mode: 'KEYPAD_SELECT' })
+      else
+        set({
+          editMode: {
+            kind: 'REDRAW_GEOMETRY',
+            targetType: 'AIRSPACE',
+            targetId: a.id,
+            drawType: 'POLYGON',
+          },
+          mode: 'FREEDRAW',
+          drawType: 'POLYGON',
+        })
     } else if (sel.kind === 'SHAPE' && sel.id) {
       const s = get().shapes.find(x => x.id === sel.id)
       if (!s) return
       const drawType = s.shapeType
-      set({ editMode: { kind: 'REDRAW_GEOMETRY', targetType: 'SHAPE', targetId: s.id, drawType }, mode: 'FREEDRAW', drawType })
+      set({
+        editMode: { kind: 'REDRAW_GEOMETRY', targetType: 'SHAPE', targetId: s.id, drawType },
+        mode: 'FREEDRAW',
+        drawType,
+      })
     }
   },
   cancelEdit: () => set({ editMode: null, mode: 'SELECT' }),
@@ -185,8 +241,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const keypads = get().selectedKeypads.slice().sort()
     const geometry = polygonFromKeypads(keypads)
     const id = uid('as')
-    const a: AirspaceReservation = { id, ownerCallsign: callsign, kind: 'KEYPAD', state, altitude, keypads, displayText: displayText ?? keypads.join(''), geometry }
-    set((st) => ({ airspaces: [a, ...st.airspaces], selectedKeypads: [], selectedId: { kind: 'AIRSPACE', id }, mode: 'SELECT' }))
+    const a: AirspaceReservation = {
+      id,
+      ownerCallsign: callsign,
+      kind: 'KEYPAD',
+      state,
+      altitude,
+      keypads,
+      displayText: displayText ?? keypads.join(''),
+      geometry,
+    }
+    set(st => ({
+      airspaces: [a, ...st.airspaces],
+      selectedKeypads: [],
+      selectedId: { kind: 'AIRSPACE', id },
+      mode: 'SELECT',
+    }))
     get().upsertAircraft(callsign)
     get().recomputeDerived()
   },
@@ -194,14 +264,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   createAirspaceFromPolygon: ({ callsign, altitude, state, polygon, displayText }) => {
     const keypads = deriveKeypadsFromPolygon(polygon).sort()
     const id = uid('as')
-    const a: AirspaceReservation = { id, ownerCallsign: callsign, kind: 'FREEDRAW', state, altitude, keypads, displayText, geometry: polygon }
-    set((st) => ({ airspaces: [a, ...st.airspaces], selectedId: { kind: 'AIRSPACE', id }, mode: 'SELECT' }))
+    const a: AirspaceReservation = {
+      id,
+      ownerCallsign: callsign,
+      kind: 'FREEDRAW',
+      state,
+      altitude,
+      keypads,
+      displayText,
+      geometry: polygon,
+    }
+    set(st => ({
+      airspaces: [a, ...st.airspaces],
+      selectedId: { kind: 'AIRSPACE', id },
+      mode: 'SELECT',
+    }))
     get().upsertAircraft(callsign)
     get().recomputeDerived()
   },
 
   updateAirspace: (id, patch) => {
-    set((st) => ({ airspaces: st.airspaces.map(a => a.id === id ? { ...a, ...patch } : a) }))
+    set(st => ({ airspaces: st.airspaces.map(a => (a.id === id ? { ...a, ...patch } : a)) }))
     get().recomputeDerived()
   },
 
@@ -209,7 +292,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const res = parseKeypadString(keypadText)
     if (!res.ok) return { ok: false, warning: res.warning }
     const geometry = polygonFromKeypads(res.keypads)
-    set((st) => ({ airspaces: st.airspaces.map(a => a.id === id ? { ...a, keypads: res.keypads, displayText: res.displayText, geometry, kind: 'KEYPAD' } : a) }))
+    set(st => ({
+      airspaces: st.airspaces.map(a =>
+        a.id === id
+          ? { ...a, keypads: res.keypads, displayText: res.displayText, geometry, kind: 'KEYPAD' }
+          : a,
+      ),
+    }))
     get().recomputeDerived()
     return { ok: true, warning: res.warning }
   },
@@ -217,22 +306,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   archiveSelected: () => {
     const sel = get().selectedId
     if (sel.kind === 'AIRSPACE' && sel.id) {
-      set((st) => ({ airspaces: st.airspaces.map(a => a.id === sel.id ? { ...a, state: 'ARCHIVED' } : a) }))
+      set(st => ({
+        airspaces: st.airspaces.map(a => (a.id === sel.id ? { ...a, state: 'ARCHIVED' } : a)),
+      }))
       get().recomputeDerived()
     }
     if (sel.kind === 'SHAPE' && sel.id) {
-      set((st) => ({ shapes: st.shapes.filter(s => s.id !== sel.id) }))
+      set(st => ({ shapes: st.shapes.filter(s => s.id !== sel.id) }))
       get().recomputeDerived()
     }
   },
 
-  deleteAirspace: (id) => {
-    set((st)=>({ airspaces: st.airspaces.filter(a=>a.id!==id) }))
+  deleteAirspace: id => {
+    set(st => ({ airspaces: st.airspaces.filter(a => a.id !== id) }))
     get().recomputeDerived()
   },
 
-  duplicateAirspace: (id) => {
-    const src = get().airspaces.find(a=>a.id===id)
+  duplicateAirspace: id => {
+    const src = get().airspaces.find(a => a.id === id)
     if (!src) return
     const newId = uid('as')
     const callsign = `${src.ownerCallsign}-duplicate`
@@ -243,16 +334,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       name: src.name ? `${src.name}-duplicate` : undefined,
       state: 'PLANNED',
     }
-    set((st)=>({ airspaces: [dup, ...st.airspaces], selectedId: {kind:'AIRSPACE', id:newId} }))
+    set(st => ({ airspaces: [dup, ...st.airspaces], selectedId: { kind: 'AIRSPACE', id: newId } }))
     get().upsertAircraft(callsign)
     get().recomputeDerived()
   },
 
   upsertAircraft: (callsign, patch) => {
-    set((st) => {
-      const existing = st.aircraft.find(a=>a.callsign===callsign)
+    set(st => {
+      const existing = st.aircraft.find(a => a.callsign === callsign)
       if (existing) {
-        return { aircraft: st.aircraft.map(a=>a.callsign===callsign ? { ...a, ...patch } : a) }
+        return {
+          aircraft: st.aircraft.map(a => (a.callsign === callsign ? { ...a, ...patch } : a)),
+        }
       }
       const a: Aircraft = {
         id: uid('ac'),
@@ -268,39 +361,49 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  updateAircraft: (id, patch) => set((st) => ({ aircraft: st.aircraft.map(a => a.id === id ? { ...a, ...patch } : a) })),
+  updateAircraft: (id, patch) =>
+    set(st => ({ aircraft: st.aircraft.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
 
-  addShape: (shape) => {
+  addShape: shape => {
     const id = uid('sh')
     const derivedKeypads =
-      shape.shapeType === 'POLYGON' ? deriveKeypadsFromPolygon(shape.geometry as GeoJSON.Polygon)
-      : shape.shapeType === 'ROUTE' ? deriveKeypadsFromLine(shape.geometry as GeoJSON.LineString)
-      : deriveKeypadsFromPoint(shape.geometry as GeoJSON.Point)
+      shape.shapeType === 'POLYGON'
+        ? deriveKeypadsFromPolygon(shape.geometry as GeoJSON.Polygon)
+        : shape.shapeType === 'ROUTE'
+          ? deriveKeypadsFromLine(shape.geometry as GeoJSON.LineString)
+          : deriveKeypadsFromPoint(shape.geometry as GeoJSON.Point)
 
     const sh: FreeDrawShape = { id, ...shape, derivedKeypads }
-    set((st) => ({ shapes: [sh, ...st.shapes], selectedId: { kind:'SHAPE', id }, mode: 'SELECT' }))
+    set(st => ({ shapes: [sh, ...st.shapes], selectedId: { kind: 'SHAPE', id }, mode: 'SELECT' }))
     get().recomputeDerived()
   },
 
   updateShapeGeometry: (id, geometry) => {
-    set((st)=>({ shapes: st.shapes.map(s => {
-      if (s.id !== id) return s
-      const derivedKeypads =
-        s.shapeType === 'POLYGON' ? deriveKeypadsFromPolygon(geometry as GeoJSON.Polygon)
-        : s.shapeType === 'ROUTE' ? deriveKeypadsFromLine(geometry as GeoJSON.LineString)
-        : deriveKeypadsFromPoint(geometry as GeoJSON.Point)
-      return { ...s, geometry, derivedKeypads }
-    })}))
+    set(st => ({
+      shapes: st.shapes.map(s => {
+        if (s.id !== id) return s
+        const derivedKeypads =
+          s.shapeType === 'POLYGON'
+            ? deriveKeypadsFromPolygon(geometry as GeoJSON.Polygon)
+            : s.shapeType === 'ROUTE'
+              ? deriveKeypadsFromLine(geometry as GeoJSON.LineString)
+              : deriveKeypadsFromPoint(geometry as GeoJSON.Point)
+        return { ...s, geometry, derivedKeypads }
+      }),
+    }))
     get().recomputeDerived()
   },
 
-  deleteShape: (id) => set((st)=>({ shapes: st.shapes.filter(s=>s.id!==id) })),
+  deleteShape: id => set(st => ({ shapes: st.shapes.filter(s => s.id !== id) })),
 
-  setCurrentTimeSec: (sec) => set({ currentTimeSec: sec }),
-  toggleHandled: (eventKey) => set((st)=>({ handledEventIds: { ...st.handledEventIds, [eventKey]: !st.handledEventIds[eventKey] } })),
+  setCurrentTimeSec: sec => set({ currentTimeSec: sec }),
+  toggleHandled: eventKey =>
+    set(st => ({
+      handledEventIds: { ...st.handledEventIds, [eventKey]: !st.handledEventIds[eventKey] },
+    })),
 
-  submitDrawResult: (r) => set({ pendingDrawResult: r }),
-  submitKeypadResult: (r) => set({ pendingKeypadResult: r }),
+  submitDrawResult: r => set({ pendingDrawResult: r }),
+  submitKeypadResult: r => set({ pendingKeypadResult: r }),
   clearPendingDraw: () => set({ pendingDrawResult: null }),
   clearPendingKeypad: () => set({ pendingKeypadResult: null }),
 
@@ -317,9 +420,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const adjacency = new Map<string, Set<string>>()
     for (const a of relevant) adjacency.set(a.id, new Set())
 
-    for (let i=0;i<relevant.length;i++) {
-      for (let j=i+1;j<relevant.length;j++) {
-        const A = relevant[i], B = relevant[j]
+    for (let i = 0; i < relevant.length; i++) {
+      for (let j = i + 1; j < relevant.length; j++) {
+        const A = relevant[i],
+          B = relevant[j]
 
         // Use Set for O(n) overlap check instead of O(n*m) (fix 7a)
         const bSet = new Set(B.keypads)
@@ -335,7 +439,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         // MARSA suppression only if both owners are aircraft and MARSA set between them
         const aAc = acByCallsign.get(A.ownerCallsign)
         const bAc = acByCallsign.get(B.ownerCallsign)
-        const marsa = !!(aAc && bAc && aAc.marsaWith.includes(bAc.callsign) && bAc.marsaWith.includes(aAc.callsign))
+        const marsa = !!(
+          aAc &&
+          bAc &&
+          aAc.marsaWith.includes(bAc.callsign) &&
+          bAc.marsaWith.includes(aAc.callsign)
+        )
         if (marsa) continue
 
         conflicts.push({
@@ -387,7 +496,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     let groupsChanged = existing.size !== overlapGroups.size
     if (!groupsChanged) {
       for (const [id, slot] of overlapGroups) {
-        if (existing.get(id) !== slot) { groupsChanged = true; break }
+        if (existing.get(id) !== slot) {
+          groupsChanged = true
+          break
+        }
       }
     }
     set({ conflicts, overlapGroups: groupsChanged ? overlapGroups : existing })
