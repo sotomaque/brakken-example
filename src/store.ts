@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Aircraft, AirspaceReservation, FreeDrawShape, GridOptions, LayerToggles, Scope, Scenario } from './types'
 import { uid, polygonFromKeypads, deriveKeypadsFromPolygon, deriveKeypadsFromLine, deriveKeypadsFromPoint, parseKeypadString, altitudeConflicts } from './utils'
+import { SCENARIO } from './scenario'
 import type { Altitude } from './types'
 
 export type Mode = 'SELECT' | 'KEYPAD_SELECT' | 'FREEDRAW'
@@ -16,10 +17,8 @@ export type HoverInfo =
 
 export type Conflict = { aId: string; bId: string; reason: string; overlappingKeypads: string[] }
 
-type CreateDraft =
-  | null
-  | { kind: 'KEYPAD'; keypads: string[] }
-  | { kind: 'FREEDRAW'; polygon: GeoJSON.Polygon }
+export type PendingDrawResult = { drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number,number][] } | null
+export type PendingKeypadResult = { keypads: string[] } | null
 
 type AppState = {
   // data
@@ -40,12 +39,19 @@ type AppState = {
   activeTab: 'ACTIVE'|'PLANNED'|'ARCHIVED'
   layerToggles: LayerToggles
   gridOptions: GridOptions
+  picassoMode: boolean
+  picassoRadius: number // 4..16 px
 
   // scenario time (seconds from midnight)
   currentTimeSec: number
 
   // derived
   conflicts: Conflict[]
+  overlapGroups: Map<string, number> // airspaceId -> offset slot (0-7)
+
+  // pending results from map interactions (replaces CustomEvent bus)
+  pendingDrawResult: PendingDrawResult
+  pendingKeypadResult: PendingKeypadResult
 
   // actions
   setMode: (m: Mode) => void
@@ -55,6 +61,8 @@ type AppState = {
   setActiveTab: (t: AppState['activeTab']) => void
   setLayerToggle: (k: keyof LayerToggles, v: boolean) => void
   setGridOptions: (p: Partial<GridOptions>) => void
+  togglePicassoMode: () => void
+  setPicassoRadius: (r: number) => void
 
   toggleKeypad: (id: string) => void
   clearKeypads: () => void
@@ -86,6 +94,11 @@ type AppState = {
   setCurrentTimeSec: (sec: number) => void
   toggleHandled: (eventKey: string) => void
 
+  submitDrawResult: (r: NonNullable<PendingDrawResult>) => void
+  submitKeypadResult: (r: NonNullable<PendingKeypadResult>) => void
+  clearPendingDraw: () => void
+  clearPendingKeypad: () => void
+
   recomputeDerived: () => void
 }
 
@@ -110,7 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   aircraft: [],
   airspaces: [],
   shapes: [],
-  scenario: { startTimeZ: '13:00:00Z', events: [] },
+  scenario: SCENARIO,
   handledEventIds: {},
 
   mode: 'SELECT',
@@ -124,7 +137,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   layerToggles: defaultLayers(),
   gridOptions: defaultGridOptions(),
   currentTimeSec: 13*3600,
+  picassoMode: false,
+  picassoRadius: 8,
   conflicts: [],
+  overlapGroups: new Map(),
+  pendingDrawResult: null,
+  pendingKeypadResult: null,
 
   setMode: (m) => set({ mode: m }),
   setDrawType: (t) => set({ drawType: t }),
@@ -133,6 +151,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActiveTab: (t) => set({ activeTab: t }),
   setLayerToggle: (k, v) => set({ layerToggles: { ...get().layerToggles, [k]: v } }),
   setGridOptions: (p) => set({ gridOptions: { ...get().gridOptions, ...p } }),
+  togglePicassoMode: () => set((st) => ({ picassoMode: !st.picassoMode })),
+  setPicassoRadius: (r) => set({ picassoRadius: r }),
 
   toggleKeypad: (id) => set((st) => {
     const exists = st.selectedKeypads.includes(id)
@@ -279,21 +299,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCurrentTimeSec: (sec) => set({ currentTimeSec: sec }),
   toggleHandled: (eventKey) => set((st)=>({ handledEventIds: { ...st.handledEventIds, [eventKey]: !st.handledEventIds[eventKey] } })),
 
+  submitDrawResult: (r) => set({ pendingDrawResult: r }),
+  submitKeypadResult: (r) => set({ pendingKeypadResult: r }),
+  clearPendingDraw: () => set({ pendingDrawResult: null }),
+  clearPendingKeypad: () => set({ pendingKeypadResult: null }),
+
   recomputeDerived: () => {
     const { airspaces, aircraft } = get()
     const conflicts: Conflict[] = []
     const relevant = airspaces.filter(a => a.state !== 'ARCHIVED')
 
+    // Build callsign→Aircraft index once (fix 7b)
+    const acByCallsign = new Map<string, Aircraft>()
+    for (const ac of aircraft) acByCallsign.set(ac.callsign, ac)
+
+    // Adjacency for overlap groups (geographic overlap regardless of altitude)
+    const adjacency = new Map<string, Set<string>>()
+    for (const a of relevant) adjacency.set(a.id, new Set())
+
     for (let i=0;i<relevant.length;i++) {
       for (let j=i+1;j<relevant.length;j++) {
         const A = relevant[i], B = relevant[j]
-        const overlap = A.keypads.filter(k => B.keypads.includes(k))
+
+        // Use Set for O(n) overlap check instead of O(n*m) (fix 7a)
+        const bSet = new Set(B.keypads)
+        const overlap = A.keypads.filter(k => bSet.has(k))
         if (overlap.length === 0) continue
+
+        // Track geographic overlap for picasso mode (altitude-independent)
+        adjacency.get(A.id)!.add(B.id)
+        adjacency.get(B.id)!.add(A.id)
+
         if (!altitudeConflicts(A.altitude, B.altitude)) continue
 
         // MARSA suppression only if both owners are aircraft and MARSA set between them
-        const aAc = aircraft.find(x => x.callsign === A.ownerCallsign)
-        const bAc = aircraft.find(x => x.callsign === B.ownerCallsign)
+        const aAc = acByCallsign.get(A.ownerCallsign)
+        const bAc = acByCallsign.get(B.ownerCallsign)
         const marsa = !!(aAc && bAc && aAc.marsaWith.includes(bAc.callsign) && bAc.marsaWith.includes(aAc.callsign))
         if (marsa) continue
 
@@ -305,6 +346,50 @@ export const useAppStore = create<AppState>((set, get) => ({
         })
       }
     }
-    set({ conflicts })
+
+    // BFS to find connected overlap components and assign slots
+    const overlapGroups = new Map<string, number>()
+    const visited = new Set<string>()
+
+    for (const a of relevant) {
+      if (visited.has(a.id)) continue
+      const neighbors = adjacency.get(a.id)!
+      if (neighbors.size === 0) {
+        overlapGroups.set(a.id, 0)
+        visited.add(a.id)
+        continue
+      }
+
+      // BFS connected component
+      const component: string[] = []
+      const queue: string[] = [a.id]
+      visited.add(a.id)
+      while (queue.length > 0) {
+        const current = queue.shift()!
+        component.push(current)
+        for (const neighbor of adjacency.get(current)!) {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor)
+            queue.push(neighbor)
+          }
+        }
+      }
+
+      // Assign deterministic slots sorted by ID for stability
+      component.sort()
+      for (let idx = 0; idx < component.length; idx++) {
+        overlapGroups.set(component[idx], idx % 8)
+      }
+    }
+
+    // Reuse existing Map reference if entries are identical (Rule 1.4: avoid unnecessary subscriber notifications)
+    const existing = get().overlapGroups
+    let groupsChanged = existing.size !== overlapGroups.size
+    if (!groupsChanged) {
+      for (const [id, slot] of overlapGroups) {
+        if (existing.get(id) !== slot) { groupsChanged = true; break }
+      }
+    }
+    set({ conflicts, overlapGroups: groupsChanged ? overlapGroups : existing })
   },
 }))

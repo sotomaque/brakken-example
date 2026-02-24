@@ -1,7 +1,27 @@
-import React, { useMemo, useState } from 'react'
+import { memo, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
+import {
+  Accordion,
+  AccordionGroup,
+  AccordionHeader,
+  AccordionPanel,
+  AccordionTrigger,
+  Button,
+  Checkbox,
+  Chip,
+  OptionsItem,
+  OptionsSection,
+  SelectField,
+  Tab,
+  TabList,
+  Tabs,
+  TextField,
+  TextAreaField,
+} from '@accelint/design-toolkit'
+import { AlertBase, Delete, Edit, Grid, PolygonTool } from '@accelint/icons'
 import { useAppStore } from './store'
 import { fmtAlt } from './utils'
-import type { AirspaceReservation } from './types'
+import type { Aircraft, AirspaceReservation } from './types'
+import type { Key } from 'react-aria-components'
 
 const QUICK_COLORS = [
   { label: 'Green', hex: '#3cff9e' },
@@ -9,51 +29,301 @@ const QUICK_COLORS = [
   { label: 'Yellow', hex: '#ffd24b' },
   { label: 'Red', hex: '#ff4b4b' },
   { label: 'Pink', hex: '#ff4bcf' },
-  { label: 'Purple', hex: '#b24bff' }
-];
+  { label: 'Purple', hex: '#b24bff' },
+]
 
-type ContextMenuState = { x: number; y: number; airspaceId: string } | null
+// Hoisted style constants for hot-path rendering
+const S_FLEX_ROW: CSSProperties = { display:'flex', gap: 8, alignItems:'center' }
+const S_FLEX_ROW_10: CSSProperties = { display:'flex', gap: 10, alignItems:'center' }
+const S_FLEX_GAP8: CSSProperties = { display:'flex', gap: 8 }
+const S_SPAN2: CSSProperties = { gridColumn: 'span 2' }
+const S_MUTED_SMALL: CSSProperties = { color:'#9fb1c5', fontSize:12 }
+const S_STYLE_BOX: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '8px' }
+const S_STYLE_LABEL_NC: CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', fontSize: 12, color: '#e6eef7', margin: 0 }
+const S_SWATCH_ROW: CSSProperties = { display: 'flex', gap: '8px', alignItems: 'center' }
+const S_ACTIONS_ROW: CSSProperties = { display:'flex', gap: 8, gridColumn:'span 2', justifyContent:'flex-end' }
+const S_ROW_BODY: CSSProperties = { padding: '8px 10px 10px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }
+const S_SELECTED_OUTLINE: CSSProperties = { outline: '2px solid #4ba3ff' }
+const S_NO_OUTLINE: CSSProperties = { outline: 'none' }
+const S_CTX_MENU: CSSProperties = { fontSize:12, color:'#9fb1c5', marginBottom:8 }
 
-export default function RightPanel() {
-  const {
-    aircraft, airspaces, conflicts, activeTab, setActiveTab,
-    scope, setScope, shapes,
-    selectedId, selectAirspace,
-    updateAirspace, updateAirspaceKeypadString, duplicateAirspace, deleteAirspace,
-    updateAircraft,
-  } = useAppStore()
+const KILLBOX_OPTIONS = ['23AF','23AG','23AH','23AI','22AF','22AG','22AH','22AI','21AF','21AG','21AH','21AI']
 
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [ctx, setCtx] = useState<ContextMenuState>(null)
+function handleAltChange(id: string, val: string) {
+  const cleanVal = val.trim()
+  if (!cleanVal) return
 
-  const handleAltChange = (id: string, val: string) => {
-    const cleanVal = val.trim();
-    if (!cleanVal) return;
-    
-    let newAlt: any;
-    
-    if (cleanVal.includes('-')) {
-      const [minStr, maxStr] = cleanVal.split('-');
-      const minFt = parseInt(minStr, 10);
-      const maxFt = parseInt(maxStr, 10);
-      if (!isNaN(minFt) && !isNaN(maxFt)) {
-        newAlt = { kind: 'BLOCK', minFt, maxFt }; 
-      }
-    } else {
-      const singleFt = parseInt(cleanVal, 10);
-      if (!isNaN(singleFt)) {
-        newAlt = { kind: 'SINGLE', singleFt };
-      }
+  let newAlt: { kind: 'SINGLE'; singleFt: number } | { kind: 'BLOCK'; minFt: number; maxFt: number } | undefined
+
+  if (cleanVal.includes('-')) {
+    const [minStr, maxStr] = cleanVal.split('-')
+    const minFt = parseInt(minStr, 10)
+    const maxFt = parseInt(maxStr, 10)
+    if (!isNaN(minFt) && !isNaN(maxFt)) {
+      newAlt = { kind: 'BLOCK', minFt, maxFt }
     }
-
-    if (newAlt) {
-      updateAirspace(id, { altitude: newAlt });
-      useAppStore.getState().recomputeDerived();
+  } else {
+    const singleFt = parseInt(cleanVal, 10)
+    if (!isNaN(singleFt)) {
+      newAlt = { kind: 'SINGLE', singleFt }
     }
-  };
+  }
+
+  if (newAlt) {
+    useAppStore.getState().updateAirspace(id, { altitude: newAlt })
+    useAppStore.getState().recomputeDerived()
+  }
+}
+
+// ── Extracted memoized row component ──────────────────────────────────
+type ConflictInfo = { count: number; others: string[]; overlap: string[] }
+
+type AirspaceRowProps = {
+  a: AirspaceReservation
+  conflict: ConflictInfo | undefined
+  isSelected: boolean
+  owner: Aircraft | undefined
+  activeTab: string
+  allAircraft: Aircraft[]
+  onContextMenu: (e: MouseEvent, id: string) => void
+}
+
+const chipColor = (state: string) => {
+  if (state === 'ACTIVE') return 'normal' as const
+  if (state === 'PLANNED') return 'info' as const
+  if (state === 'COLD') return 'advisory' as const
+  return 'info' as const
+}
+
+const AirspaceRow = memo(function AirspaceRow({
+  a, conflict, isSelected, owner, activeTab, allAircraft, onContextMenu,
+}: AirspaceRowProps) {
+  return (
+    <Accordion
+      id={a.id}
+      variant="compact"
+      style={conflict ? { borderColor: 'var(--danger2)', background: 'rgba(177,49,49,0.12)' } : undefined}
+      onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); onContextMenu(e as unknown as MouseEvent, a.id) }}
+    >
+      <AccordionHeader style={isSelected ? S_SELECTED_OUTLINE : S_NO_OUTLINE}>
+        <AccordionTrigger>
+          <div style={S_FLEX_ROW_10}>
+            <strong style={{ fontSize: 14 }}>{a.ownerCallsign}</strong>
+            <div style={S_FLEX_ROW}>
+              <Chip color={chipColor(a.state)} size="small">{a.state}</Chip>
+              <Chip size="small">{a.kind}</Chip>
+              <Chip size="small">{fmtAlt(a.altitude)} ft</Chip>
+              {conflict && <Chip color="critical" size="small">CONFLICT</Chip>}
+            </div>
+          </div>
+        </AccordionTrigger>
+        <div style={S_FLEX_ROW} onClick={(e) => e.stopPropagation()}>
+          {conflict && (
+            <Button
+              variant="icon"
+              size="xsmall"
+              color="critical"
+              onPress={() => {
+                alert(`Conflict with ${conflict.count} item(s). Overlap: ${conflict.overlap.slice(0,10).join(', ')}${conflict.overlap.length>10?'...':''}`)
+              }}
+            >
+              <AlertBase width={14} height={14} />
+            </Button>
+          )}
+
+          {a.state === 'COLD' && (
+            <Button
+              variant="outline"
+              size="xsmall"
+              onPress={() => useAppStore.getState().updateAirspace(a.id, { showCold: !a.showCold })}
+            >
+              {a.showCold ? 'Hide' : 'Show'}
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="xsmall"
+            onPress={() => useAppStore.getState().updateAirspace(a.id, { state: a.state==='ACTIVE' ? 'COLD' : 'ACTIVE' })}
+          >
+            {a.state==='ACTIVE' ? 'Set COLD' : 'Set ACTIVE'}
+          </Button>
+        </div>
+      </AccordionHeader>
+
+      <AccordionPanel>
+        <div style={S_ROW_BODY}>
+          <TextField
+            label="Type"
+            size="small"
+            inputProps={{
+              value: owner?.type ?? '',
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => owner && useAppStore.getState().updateAircraft(owner.id, { type: e.target.value }),
+              placeholder: 'e.g., MQ-9',
+            }}
+          />
+          <TextField
+            label="Qty"
+            size="small"
+            inputProps={{
+              type: 'number',
+              value: String(owner?.qty ?? 1),
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => owner && useAppStore.getState().updateAircraft(owner.id, { qty: parseInt(e.target.value,10) || 1 }),
+            }}
+          />
+          <TextField
+            label="Mode 2/3"
+            size="small"
+            inputProps={{
+              value: owner?.mode23 ?? '',
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => owner && useAppStore.getState().updateAircraft(owner.id, { mode23: e.target.value }),
+              placeholder: 'e.g., 2343',
+            }}
+          />
+
+          <TextField
+            label="Altitude (ft)"
+            size="small"
+            inputProps={{
+              type: 'text',
+              defaultValue: a.altitude.kind === 'SINGLE' ? String(a.altitude.singleFt) : `${a.altitude.minFt}-${a.altitude.maxFt}`,
+              onBlur: (e: React.FocusEvent<HTMLInputElement>) => handleAltChange(a.id, e.target.value),
+              onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAltChange(a.id, e.currentTarget.value)
+                  e.currentTarget.blur()
+                }
+              },
+              placeholder: 'e.g. 3000 or 2000-5000',
+            }}
+          />
+
+          <TextField
+            label="Airspace keypads"
+            size="small"
+            inputProps={{
+              value: a.displayText ?? (a.keypads.map(k=>k.slice(0,4)+k.slice(4)).join(' ')),
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => useAppStore.getState().updateAirspaceKeypadString(a.id, e.target.value),
+              disabled: a.kind !== 'KEYPAD',
+              title: a.kind !== 'KEYPAD' ? 'Free-draw: edit geometry on map' : 'Edit keypad string',
+            }}
+          />
+
+          <div style={S_SPAN2}>
+            <span style={{ display:'block', fontSize:11, color:'#9fb1c5', marginBottom:4 }}>Style & Color</span>
+            <div style={S_STYLE_BOX}>
+              <Checkbox
+                isSelected={a.showFill !== false}
+                onChange={(isSelected) => useAppStore.getState().updateAirspace(a.id, { showFill: isSelected })}
+              >
+                Fill airspace area
+              </Checkbox>
+
+              <label style={S_STYLE_LABEL_NC}>
+                <span>Thickness: {a.lineWidth ?? 2}</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="8"
+                  step="1"
+                  value={a.lineWidth ?? 2}
+                  onChange={(e) => useAppStore.getState().updateAirspace(a.id, { lineWidth: parseInt(e.target.value, 10) })}
+                  style={{ flex: 1, cursor: 'ew-resize' }}
+                />
+              </label>
+
+              <div style={S_SWATCH_ROW}>
+                {QUICK_COLORS.map(c => (
+                  <button
+                    type="button"
+                    key={c.hex}
+                    onClick={() => useAppStore.getState().updateAirspace(a.id, { color: c.hex })}
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%', backgroundColor: c.hex,
+                      border: a.color === c.hex ? '2px solid #fff' : '2px solid transparent',
+                      cursor: 'pointer', padding: 0,
+                    }}
+                    title={c.label}
+                  />
+                ))}
+                <Button
+                  variant="outline"
+                  size="xsmall"
+                  onPress={() => useAppStore.getState().updateAirspace(a.id, { color: undefined })}
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <SelectField
+            label="MARSA with (mutual)"
+            size="small"
+            selectedKey={owner?.marsaWith?.[0] ?? null}
+            onSelectionChange={(key) => {
+              if (!owner) return
+              const selected = key ? [String(key)] : []
+              useAppStore.getState().updateAircraft(owner.id, { marsaWith: selected })
+              useAppStore.getState().recomputeDerived()
+            }}
+          >
+            {allAircraft.filter(x => x.callsign !== a.ownerCallsign).map(x => (
+              <OptionsItem key={x.callsign} id={x.callsign}>{x.callsign}</OptionsItem>
+            ))}
+          </SelectField>
+
+          <div style={S_SPAN2}>
+            <TextAreaField
+              label="Notes"
+              size="small"
+              inputProps={{
+                value: owner?.notes ?? '',
+                onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => owner && useAppStore.getState().updateAircraft(owner.id, { notes: e.target.value }),
+              }}
+            />
+          </div>
+
+          <div style={S_ACTIONS_ROW}>
+            <Button variant="outline" size="small" onPress={() => useAppStore.getState().startEditSelected()}>
+              <Edit width={14} height={14} /> Edit (E)
+            </Button>
+            <Button variant="outline" size="small" color="critical" onPress={() => useAppStore.getState().archiveSelected()}>
+              <Delete width={14} height={14} /> Archive
+            </Button>
+            {activeTab === 'ARCHIVED' && (
+              <Button variant="outline" size="small" color="critical" onPress={() => useAppStore.getState().deleteAirspace(a.id)}>
+                Delete
+              </Button>
+            )}
+          </div>
+        </div>
+      </AccordionPanel>
+    </Accordion>
+  )
+})
+
+// ── Main RightPanel ─────────────────────────────────────────────────────────
+export default memo(function RightPanel() {
+  // Granular selectors
+  const aircraft = useAppStore(s => s.aircraft)
+  const airspaces = useAppStore(s => s.airspaces)
+  const conflicts = useAppStore(s => s.conflicts)
+  const activeTab = useAppStore(s => s.activeTab)
+  const scope = useAppStore(s => s.scope)
+  const shapes = useAppStore(s => s.shapes)
+  const selectedId = useAppStore(s => s.selectedId)
+
+  const setActiveTab = useAppStore(s => s.setActiveTab)
+  const setScope = useAppStore(s => s.setScope)
+  const duplicateAirspace = useAppStore(s => s.duplicateAirspace)
+
+  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set())
+  const [ctx, setCtx] = useState<{ x: number; y: number; airspaceId: string } | null>(null)
 
   const conflictSet = useMemo(() => {
-    const map = new Map<string, {count:number; others:string[]; overlap:string[]}>()
+    const map = new Map<string, ConflictInfo>()
     for (const c of conflicts) {
       const add = (id: string, otherId: string) => {
         const prev = map.get(id) || { count: 0, others: [], overlap: [] }
@@ -86,254 +356,96 @@ export default function RightPanel() {
     return list
   }, [airspaces, activeTab, scope, shapes])
 
-  const killboxOptions = ['23AF','23AG','23AH','23AI','22AF','22AG','22AH','22AI','21AF','21AG','21AH','21AI']
-  const namedAreas = shapes.filter(s => s.tags.includes('ROZ'))
+  const namedAreas = useMemo(() => shapes.filter(s => s.tags.includes('ROZ')), [shapes])
+
+  const scopeKey = scope.kind === 'AOR' ? 'AOR' : scope.kind === 'KILLBOX' ? `K:${scope.killbox}` : `R:${scope.areaId}`
+
+  const handleRowCtx = (e: MouseEvent, id: string) => setCtx({ x: e.clientX, y: e.clientY, airspaceId: id })
 
   return (
-    <div className="rightPanel" onClick={()=>ctx && setCtx(null)}>
+    <div className="rightPanel" onClick={() => ctx && setCtx(null)}>
       <div className="tablePanel">
         <div className="panelHeader">
-          <div style={{ display:'flex', gap: 8, alignItems:'center' }}>
+          <div style={S_FLEX_ROW}>
             <strong>Airspace Deconfliction</strong>
-            <span style={{ color:'#9fb1c5', fontSize:12 }}>Top-down keypad stack</span>
+            <span style={S_MUTED_SMALL}>Top-down keypad stack</span>
           </div>
-          <div style={{ display:'flex', gap: 8 }}>
-            <button className="smallBtn" onClick={()=>useAppStore.getState().setMode('KEYPAD_SELECT')}>Keypad select</button>
-            <button className="smallBtn" onClick={()=>useAppStore.getState().setMode('FREEDRAW')}>Free draw</button>
+          <div style={S_FLEX_GAP8}>
+            <Button variant="outline" size="small" onPress={() => useAppStore.getState().setMode('KEYPAD_SELECT')}>
+              <Grid width={14} height={14} /> Keypad select
+            </Button>
+            <Button variant="outline" size="small" onPress={() => useAppStore.getState().setMode('FREEDRAW')}>
+              <PolygonTool width={14} height={14} /> Free draw
+            </Button>
           </div>
-        </div>
-        
-        <div className="tabs">
-          <button className={'tabBtn ' + (activeTab==='ACTIVE'?'active':'')} onClick={()=>setActiveTab('ACTIVE')}>Active</button>
-          <button className={'tabBtn ' + (activeTab==='PLANNED'?'active':'')} onClick={()=>setActiveTab('PLANNED')}>Planned</button>
-          <button className={'tabBtn ' + (activeTab==='ARCHIVED'?'active':'')} onClick={()=>setActiveTab('ARCHIVED')}>Archived</button>
         </div>
 
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as 'ACTIVE' | 'PLANNED' | 'ARCHIVED')}
+        >
+          <TabList style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+            <Tab id="ACTIVE">Active</Tab>
+            <Tab id="PLANNED">Planned</Tab>
+            <Tab id="ARCHIVED">Archived</Tab>
+          </TabList>
+        </Tabs>
+
         <div className="controlsRow">
-          <div>
-            <label style={{ display:'block', fontSize:11, color:'#9fb1c5', marginBottom:4 }}>Scope</label>
-            <select
-              value={scope.kind === 'AOR' ? 'AOR' : scope.kind === 'KILLBOX' ? `K:${scope.killbox}` : `R:${scope.areaId}`}
-              onChange={(e)=>{
-                const v = e.target.value
-                if (v === 'AOR') setScope({ kind:'AOR' })
-                else if (v.startsWith('K:')) setScope({ kind:'KILLBOX', killbox: v.slice(2) })
-                else if (v.startsWith('R:')) setScope({ kind:'AREA', areaId: v.slice(2) })
-              }}
-            >
-              <option value="AOR">Entire AOR</option>
-              <optgroup label="Inside Killbox">
-                {killboxOptions.map(k => <option key={k} value={`K:${k}`}>{k}</option>)}
-              </optgroup>
-              <optgroup label="Inside Named Area (ROZ)">
-                {namedAreas.length === 0 && <option disabled value="none">No ROZ areas yet</option>}
-                {namedAreas.map(a => <option key={a.id} value={`R:${a.id}`}>{a.label}</option>)}
-              </optgroup>
-            </select>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, color:'#9fb1c5', marginBottom:4 }}>Conflicts</label>
-            <input value={`${conflicts.length}`} readOnly />
-          </div>
+          <SelectField
+            label="Scope"
+            size="small"
+            selectedKey={scopeKey}
+            onSelectionChange={(key) => {
+              const v = String(key)
+              if (v === 'AOR') setScope({ kind:'AOR' })
+              else if (v.startsWith('K:')) setScope({ kind:'KILLBOX', killbox: v.slice(2) })
+              else if (v.startsWith('R:')) setScope({ kind:'AREA', areaId: v.slice(2) })
+            }}
+          >
+            <OptionsItem id="AOR">Entire AOR</OptionsItem>
+            <OptionsSection header="Inside Killbox">
+              {KILLBOX_OPTIONS.map(k => <OptionsItem key={k} id={`K:${k}`}>{k}</OptionsItem>)}
+            </OptionsSection>
+            <OptionsSection header="Inside Named Area (ROZ)">
+              {namedAreas.length === 0
+                ? <OptionsItem id="none" isDisabled>No ROZ areas yet</OptionsItem>
+                : namedAreas.map(a => <OptionsItem key={a.id} id={`R:${a.id}`}>{a.label}</OptionsItem>)
+              }
+            </OptionsSection>
+          </SelectField>
+          <TextField
+            label="Conflicts"
+            size="small"
+            isReadOnly
+            inputProps={{ value: `${conflicts.length}`, readOnly: true }}
+          />
         </div>
 
         <div className="table">
-          {visibleAirspaces.map((a) => {
-            const conflict = conflictSet.get(a.id)
-            const isOpen = openId === a.id
-            const isSelected = selectedId.kind === 'AIRSPACE' && selectedId.id === a.id
-            const owner = aircraft.find(x => x.callsign === a.ownerCallsign)
-
-            return (
-              <div
+          <AccordionGroup
+            expandedKeys={expandedKeys}
+            onExpandedChange={(keys) => {
+              setExpandedKeys(keys)
+              const arr = Array.from(keys)
+              if (arr.length > 0) {
+                useAppStore.getState().selectAirspace(String(arr[arr.length - 1]))
+              }
+            }}
+          >
+            {visibleAirspaces.map((a) => (
+              <AirspaceRow
                 key={a.id}
-                className={'row ' + (conflict ? 'conflict' : '')}
-                onContextMenu={(e)=>{
-                  e.preventDefault()
-                  setCtx({ x: e.clientX, y: e.clientY, airspaceId: a.id })
-                }}
-              >
-                <div
-                  className="rowHeader"
-                  onClick={() => {
-                    selectAirspace(a.id)
-                    setOpenId(isOpen ? null : a.id)
-                  }}
-                  style={{ outline: isSelected ? '2px solid #4ba3ff' : 'none' }}
-                >
-                  <div style={{ display:'flex', gap: 10, alignItems:'center' }}>
-                    <strong>{a.ownerCallsign}</strong>
-                    <div className="pills">
-                      <span className="pill">{a.state}</span>
-                      <span className="pill">{a.kind}</span>
-                      <span className="pill">{fmtAlt(a.altitude)} ft</span>
-                      {conflict && <span className="pill danger">CONFLICT</span>}
-                    </div>
-                  </div>
-
-                  <div style={{ display:'flex', gap: 8, alignItems:'center' }}>
-                    {conflict && (
-                      <button
-                        className="smallBtn danger"
-                        onClick={(e)=>{
-                          e.stopPropagation()
-                          alert(`Conflict with ${conflict.count} item(s). Overlap: ${conflict.overlap.slice(0,10).join(', ')}${conflict.overlap.length>10?'...':''}`)
-                        }}
-                        title="Show conflict details"
-                      >
-                        !
-                      </button>
-                    )}
-                    
-                    {a.state === 'COLD' && (
-                      <button
-                        className="smallBtn"
-                        onClick={(e) => { e.stopPropagation(); updateAirspace(a.id, { showCold: !a.showCold }); }}
-                      >
-                        {a.showCold ? 'Hide' : 'Show'}
-                      </button>
-                    )}
-
-                    <button className="smallBtn" onClick={(e)=>{ e.stopPropagation(); updateAirspace(a.id, { state: a.state==='ACTIVE' ? 'COLD' : 'ACTIVE' }) }}>
-                      {a.state==='ACTIVE' ? 'Set COLD' : 'Set ACTIVE'}
-                    </button>
-                  </div>
-                </div>
-
-                {isOpen && (
-                  <div className="rowBody">
-                    <div className="field">
-                      <label>Type</label>
-                      <input value={owner?.type ?? ''} onChange={(e)=> owner && updateAircraft(owner.id, { type: e.target.value })} placeholder="e.g., MQ-9" />
-                    </div>
-                    <div className="field">
-                      <label>Qty</label>
-                      <input type="number" value={owner?.qty ?? 1} onChange={(e)=> owner && updateAircraft(owner.id, { qty: parseInt(e.target.value,10) || 1 })} />
-                    </div>
-                    <div className="field">
-                      <label>Mode 2/3</label>
-                      <input value={owner?.mode23 ?? ''} onChange={(e)=> owner && updateAircraft(owner.id, { mode23: e.target.value })} placeholder="e.g., 2343" />
-                    </div>
-
-                    <div className="field">
-                      <label>Altitude (ft)</label>
-                      <input
-                        type="text"
-                        defaultValue={a.altitude.kind === 'SINGLE' ? a.altitude.singleFt : `${a.altitude.minFt}-${a.altitude.maxFt}`}
-                        onBlur={(e) => handleAltChange(a.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault(); 
-                            handleAltChange(a.id, e.currentTarget.value);
-                            e.currentTarget.blur();
-                          }
-                        }}
-                        placeholder="e.g. 3000 or 2000-5000"
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label>Airspace keypads</label>
-                      <input
-                        value={a.displayText ?? (a.keypads.map(k=>k.slice(0,4)+k.slice(4)).join(' '))}
-                        onChange={(e)=>{
-                          updateAirspaceKeypadString(a.id, e.target.value)
-                        }}
-                        disabled={a.kind !== 'KEYPAD'}
-                        title={a.kind !== 'KEYPAD' ? 'Free-draw: edit geometry on map' : 'Edit keypad string'}
-                      />
-                    </div>
-
-                    <div className="field" style={{ gridColumn: 'span 2' }}>
-                      <label>Style & Color</label>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '8px' }}>
-                        
-                        {/* Fill Toggle */}
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 12, color: '#e6eef7', cursor: 'pointer', margin: 0 }}>
-                          <input
-                            type="checkbox"
-                            checked={a.showFill !== false} 
-                            onChange={(e) => updateAirspace(a.id, { showFill: e.target.checked })}
-                          />
-                          Fill airspace area
-                        </label>
-
-                        {/* NEW: Line Width Slider */}
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 12, color: '#e6eef7', margin: 0 }}>
-                          <span>Thickness: {a.lineWidth ?? 2}</span>
-                          <input
-                            type="range"
-                            min="1"
-                            max="8"
-                            step="1"
-                            value={a.lineWidth ?? 2}
-                            onChange={(e) => updateAirspace(a.id, { lineWidth: parseInt(e.target.value, 10) })}
-                            style={{ flex: 1, cursor: 'ew-resize' }}
-                          />
-                        </label>
-
-                        {/* Color Picker Swatches */}
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {QUICK_COLORS.map(c => (
-                            <button
-                              key={c.hex}
-                              onClick={() => updateAirspace(a.id, { color: c.hex })}
-                              style={{
-                                width: 22, height: 22, borderRadius: '50%', backgroundColor: c.hex,
-                                border: a.color === c.hex ? '2px solid #fff' : '2px solid transparent',
-                                cursor: 'pointer', padding: 0
-                              }}
-                              title={c.label}
-                            />
-                          ))}
-                          <button
-                            className="smallBtn"
-                            style={{ padding: '2px 8px', fontSize: 10, marginLeft: '4px' }}
-                            onClick={() => updateAirspace(a.id, { color: undefined })}
-                            title="Reset to default state color"
-                          >
-                            Reset
-                          </button>
-                        </div>
-
-                      </div>
-                    </div>
-
-                    <div className="field">
-                      <label>MARSA with (mutual)</label>
-                      <select
-                        multiple
-                        value={owner?.marsaWith ?? []}
-                        onChange={(e)=>{
-                          if (!owner) return
-                          const selected = Array.from(e.target.selectedOptions).map(o => o.value)
-                          updateAircraft(owner.id, { marsaWith: selected })
-                          useAppStore.getState().recomputeDerived()
-                        }}
-                      >
-                        {aircraft.filter(x=>x.callsign!==a.ownerCallsign).map(x => (
-                          <option key={x.id} value={x.callsign}>{x.callsign}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="field" style={{ gridColumn:'span 2' }}>
-                      <label>Notes</label>
-                      <textarea value={owner?.notes ?? ''} onChange={(e)=> owner && updateAircraft(owner.id, { notes: e.target.value })} />
-                    </div>
-
-                    <div style={{ display:'flex', gap: 8, gridColumn:'span 2', justifyContent:'flex-end' }}>
-                      <button className="smallBtn" onClick={()=>useAppStore.getState().startEditSelected()}>Edit (E)</button>
-                      <button className="smallBtn danger" onClick={()=>useAppStore.getState().archiveSelected()}>Archive</button>
-                      {activeTab === 'ARCHIVED' && (
-                        <button className="smallBtn danger" onClick={()=>deleteAirspace(a.id)}>Delete</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                a={a}
+                conflict={conflictSet.get(a.id)}
+                isSelected={selectedId.kind === 'AIRSPACE' && selectedId.id === a.id}
+                owner={aircraft.find(x => x.callsign === a.ownerCallsign)}
+                activeTab={activeTab}
+                allAircraft={aircraft}
+                onContextMenu={handleRowCtx}
+              />
+            ))}
+          </AccordionGroup>
         </div>
       </div>
 
@@ -350,13 +462,17 @@ export default function RightPanel() {
             zIndex: 60,
             minWidth: 180,
           }}
-          onMouseDown={(e)=>e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
-          <div style={{ fontSize:12, color:'#9fb1c5', marginBottom:8 }}>Row actions</div>
-          <button className="smallBtn" style={{ width:'100%', marginBottom:6 }} onClick={()=>{ duplicateAirspace(ctx.airspaceId); setCtx(null) }}>Duplicate</button>
-          <button className="smallBtn danger" style={{ width:'100%' }} onClick={()=>{ useAppStore.getState().updateAirspace(ctx.airspaceId, { state:'ARCHIVED' }); setCtx(null) }}>Archive</button>
+          <div style={S_CTX_MENU}>Row actions</div>
+          <Button variant="outline" size="small" onPress={() => { duplicateAirspace(ctx.airspaceId); setCtx(null) }} style={{ width:'100%', marginBottom:6 }}>
+            Duplicate
+          </Button>
+          <Button variant="outline" size="small" color="critical" onPress={() => { useAppStore.getState().updateAirspace(ctx.airspaceId, { state:'ARCHIVED' }); setCtx(null) }} style={{ width:'100%' }}>
+            Archive
+          </Button>
         </div>
       )}
     </div>
   )
-}
+})

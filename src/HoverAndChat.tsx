@@ -1,26 +1,24 @@
-import React, { useMemo } from 'react'
+import { memo, useMemo } from 'react'
+import { Button, Checkbox, TextField } from '@accelint/design-toolkit'
 import { useAppStore } from './store'
 import { SCENARIO } from './scenario'
 import { parseTimeZ, toHHMMSS, fmtAlt } from './utils'
-import { REF_POINTS } from './referencePoints'
 
-export default function HoverAndChat() {
-  const {
-    hover, airspaces, shapes, aircraft,
-    currentTimeSec, setCurrentTimeSec,
-    handledEventIds, toggleHandled,
-    scope,
-  } = useAppStore()
+export default memo(function HoverAndChat() {
+  // Granular selectors -- only re-render when these specific slices change
+  const hover = useAppStore(s => s.hover)
+  const airspaces = useAppStore(s => s.airspaces)
+  const shapes = useAppStore(s => s.shapes)
+  const currentTimeSec = useAppStore(s => s.currentTimeSec)
+  const handledEventIds = useAppStore(s => s.handledEventIds)
+  const scope = useAppStore(s => s.scope)
 
-  // ensure scenario is loaded once
-  React.useEffect(() => {
-    useAppStore.setState({ scenario: SCENARIO })
-  }, [])
+  // Actions are stable references -- never cause re-renders
+  const setCurrentTimeSec = useAppStore(s => s.setCurrentTimeSec)
+  const toggleHandled = useAppStore(s => s.toggleHandled)
 
   const events = useMemo(() => {
-    // sort by timeZ
-    const sorted = [...SCENARIO.events].sort((a,b)=>parseTimeZ(a.timeZ)-parseTimeZ(b.timeZ))
-    return sorted
+    return [...SCENARIO.events].sort((a,b)=>parseTimeZ(a.timeZ)-parseTimeZ(b.timeZ))
   }, [])
 
   const visibleEvents = useMemo(() => events.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec), [events, currentTimeSec])
@@ -55,7 +53,6 @@ ${kp}`
 
     if (hover.kind === 'KEYPAD') {
       const keypadId = hover.keypadId
-      // stack list within scope (optional)
       const inScope = (kp: string) => {
         if (scope.kind === 'AOR') return true
         if (scope.kind === 'KILLBOX') return kp.startsWith(scope.killbox)
@@ -71,7 +68,6 @@ ${kp}`
 
       const stack: { label: string; sortAlt: number }[] = []
 
-      // ROZ-like shapes: any shape tagged ROZ with altitude
       for (const s of shapes) {
         if (!s.tags.includes('ROZ')) continue
         if (!s.derivedKeypads.includes(keypadId)) continue
@@ -107,18 +103,25 @@ ${kp}`
           <h3>Scenario Prompts</h3>
           <div style={{ display:'flex', gap: 8, alignItems:'center' }}>
             <span style={{ color:'#9fb1c5', fontSize:12 }}>Zulu</span>
-            <input
-              style={{ width: 110 }}
-              value={toHHMMSS(currentTimeSec)}
-              onChange={(e)=>{
-                const m = e.target.value.match(/^(\d{2}):(\d{2}):(\d{2})$/)
-                if (!m) return
-                const sec = parseInt(m[1],10)*3600 + parseInt(m[2],10)*60 + parseInt(m[3],10)
-                setCurrentTimeSec(sec)
+            <TextField
+              size="small"
+              inputProps={{
+                value: toHHMMSS(currentTimeSec),
+                onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                  const m = e.target.value.match(/^(\d{2}):(\d{2}):(\d{2})$/)
+                  if (!m) return
+                  const sec = parseInt(m[1],10)*3600 + parseInt(m[2],10)*60 + parseInt(m[3],10)
+                  setCurrentTimeSec(sec)
+                },
+                style: { width: 110 },
               }}
             />
-            <button className="smallBtn" onClick={()=>setCurrentTimeSec(Math.max(0, currentTimeSec-30))}>-30s</button>
-            <button className="smallBtn" onClick={()=>setCurrentTimeSec(currentTimeSec+30)}>+30s</button>
+            <Button variant="outline" size="small" onPress={() => setCurrentTimeSec(Math.max(0, currentTimeSec-30))}>
+              -30s
+            </Button>
+            <Button variant="outline" size="small" onPress={() => setCurrentTimeSec(currentTimeSec+30)}>
+              +30s
+            </Button>
           </div>
         </div>
 
@@ -129,10 +132,12 @@ ${kp}`
             <div key={key} className="event">
               <div className="eventTop">
                 <div className="time">{e.timeZ}</div>
-                <label>
-                  <input type="checkbox" checked={handled} onChange={()=>toggleHandled(key)} />
+                <Checkbox
+                  isSelected={handled}
+                  onChange={() => toggleHandled(key)}
+                >
                   handled
-                </label>
+                </Checkbox>
               </div>
               <div className="mono">{e.text}</div>
             </div>
@@ -141,4 +146,4 @@ ${kp}`
       </div>
     </div>
   )
-}
+})

@@ -1,11 +1,15 @@
 import maplibregl, { Map as MLMap } from 'maplibre-gl'
 import { useAppStore } from './store'
+import type { HoverInfo } from './store'
 import { AOR } from './utils'
-import { gridLinesGeoJSON, killboxLabelsGeoJSON, keypadPolygonsGeoJSON, AOR_BOUNDS } from './grid'
+import { gridLinesGeoJSON, killboxLabelsGeoJSON, keypadPolygonsGeoJSON } from './grid'
 import { REF_POINTS } from './referencePoints'
-import { fmtAlt, keypadFromLatLon } from './utils'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-
+import { fmtAlt } from './utils'
+import type { AirspaceReservation } from './types'
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { ColorPicker, Hotkey, OptionsItem, SelectField, Slider, Switch } from '@accelint/design-toolkit'
+import { globalBind, globalUnbind, Keycode, registerHotkey, unregisterHotkey } from '@accelint/hotkey-manager'
+import { ChevronDown, ChevronRight, Keyboard, Layers } from '@accelint/icons'
 
 const GRID_LINES_SOURCE = 'grid-lines'
 const GRID_LABELS_SOURCE = 'grid-labels'
@@ -14,34 +18,88 @@ const AIRSPACES_SOURCE = 'airspaces'
 const SHAPES_SOURCE = 'shapes'
 const REFS_SOURCE = 'refs'
 
-export default function MapView() {
+// Hoisted style constants for overlay panels (fix 6b)
+const S_OVERLAY_HEADER: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: 8, background: 'none', border: 'none', padding: 0, width: '100%', color: 'inherit', font: 'inherit', textAlign: 'left' }
+const S_H4: CSSProperties = { margin: 0 }
+const S_COLLAPSE_ICON: CSSProperties = { color: '#9fb1c5', fontSize: 12 }
+const S_MODE_LINE: CSSProperties = { marginBottom: 8, color: '#9fb1c5', fontSize: 12 }
+const S_MAP_HEIGHT: CSSProperties = { height: '100%' }
+const GRID_COLOR_SWATCHES = ['#9fb1c5', '#ffffff', '#4ba3ff', '#3cff9e', '#ffd24b', '#ff8f3d', '#ff4444', '#00ffff']
+
+// Hoisted static JSX for keyboard shortcuts legend (fix 2.3)
+const SHORTCUTS_JSX = (
+  <>
+    <div className="row"><Hotkey variant="outline">A</Hotkey><span>Create airspace (keypads)</span></div>
+    <div className="row"><Hotkey variant="outline">F</Hotkey><span>Free draw mode</span></div>
+    <div className="row"><Hotkey variant="outline">E</Hotkey><span>Edit selected</span></div>
+    <div className="row"><Hotkey variant="outline">Enter</Hotkey><span>Confirm draw</span></div>
+    <div className="row"><Hotkey variant="outline">Esc</Hotkey><span>Cancel</span></div>
+    <div className="row"><Hotkey variant="outline">Del</Hotkey><span>Archive</span></div>
+  </>
+)
+
+/** Return the highest altitude point for z-ordering (higher = renders on top). */
+function getEffectiveAltitude(a: AirspaceReservation): number {
+  return a.altitude.kind === 'SINGLE' ? a.altitude.singleFt : a.altitude.maxFt
+}
+
+// Picasso mode offset directions (unit vectors scaled by radius at runtime)
+const PICASSO_UNIT_OFFSETS: [number, number][] = [
+  [0, 0],        // slot 0: no offset
+  [1, 0],        // slot 1: right
+  [-1, 0],       // slot 2: left
+  [0, 1],        // slot 3: down
+  [0, -1],       // slot 4: up
+  [0.707, 0.707],   // slot 5: down-right
+  [-0.707, 0.707],  // slot 6: down-left
+  [0.707, -0.707],  // slot 7: up-right
+]
+const PICASSO_SLOT_COUNT = PICASSO_UNIT_OFFSETS.length
+const PICASSO_STATES = ['ACTIVE', 'PLANNED', 'COLD'] as const
+const PICASSO_DASH: Record<string, number[] | undefined> = {
+  ACTIVE: undefined,
+  PLANNED: [4, 4],
+  COLD: [4, 2, 1, 2],
+}
+
+// Module-level guard for map init (fix 3.4 — prevents double init in StrictMode)
+let mapDidInit = false
+
+export default memo(function MapView() {
   const mapRef = useRef<MLMap | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [toolsMinimized, setToolsMinimized] = useState(false)
   const [shortcutsMinimized, setShortcutsMinimized] = useState(false)
 
-  const {
-    mode, drawType, editMode,
-    selectedKeypads, toggleKeypad,
-    airspaces, shapes,
-    layerToggles, gridOptions,
-    setHover, hover,
-    selectedId, selectAirspace, selectShape, clearSelection,
-    cancelEdit,
-    updateAirspace, updateShapeGeometry,
-  } = useAppStore()
+  // Granular selectors (fix 5a) -- only subscribe to slices used in render or effects
+  const mode = useAppStore(s => s.mode)
+  const drawType = useAppStore(s => s.drawType)
+  const airspaces = useAppStore(s => s.airspaces)
+  const shapes = useAppStore(s => s.shapes)
+  const layerToggles = useAppStore(s => s.layerToggles)
+  const gridOptions = useAppStore(s => s.gridOptions)
+  const selectedKeypads = useAppStore(s => s.selectedKeypads)
+  const overlapGroups = useAppStore(s => s.overlapGroups)
+  const picassoMode = useAppStore(s => s.picassoMode)
+  const picassoRadius = useAppStore(s => s.picassoRadius)
 
   const gridLines = useMemo(() => gridLinesGeoJSON(), [])
   const gridLabels = useMemo(() => killboxLabelsGeoJSON(), [])
   const keypadsGeo = useMemo(() => keypadPolygonsGeoJSON(), [])
 
-  // Convert airspaces + shapes to GeoJSON
   const airspacesGeo = useMemo(() => {
     return {
       type: 'FeatureCollection',
       features: airspaces
         .filter(a => a.state !== 'ARCHIVED')
         .filter(a => !(a.state === 'COLD' && !a.showCold))
+        .sort((a, b) => {
+          // Z-ordering: KEYPAD below FREEDRAW, then lower altitude below higher
+          const kindOrder = a.kind === 'KEYPAD' ? 0 : 1
+          const kindOrderB = b.kind === 'KEYPAD' ? 0 : 1
+          if (kindOrder !== kindOrderB) return kindOrder - kindOrderB
+          return getEffectiveAltitude(a) - getEffectiveAltitude(b)
+        })
         .map(a => ({
           type: 'Feature',
           properties: {
@@ -51,14 +109,15 @@ export default function MapView() {
             kind: a.kind,
             altitude: fmtAlt(a.altitude),
             keypads: a.keypads.join(','),
-            color: a.color,                 
-            showFill: a.showFill !== false, 
-            lineWidth: a.lineWidth ?? 2.0,  // <--- NEW: defaults to 2.0 if not set
+            color: a.color,
+            showFill: a.showFill !== false,
+            lineWidth: a.lineWidth ?? 2.0,
+            overlapSlot: overlapGroups.get(a.id) ?? 0,
           },
           geometry: a.geometry,
         })),
     } as GeoJSON.FeatureCollection<GeoJSON.Polygon>
-  }, [airspaces])
+  }, [airspaces, overlapGroups])
 
   const shapesGeo = useMemo(() => {
     return {
@@ -82,10 +141,9 @@ export default function MapView() {
       features: REF_POINTS.map(r => ({
         type: 'Feature',
         properties: { id: r.id, label: r.label, keypad: r.keypad, kind: r.kind },
-        geometry: { 
-          type: 'Point', 
-          // Safely handles whether r.pos is an array [lon, lat] or an object {lon, lat}
-          coordinates: Array.isArray(r.pos) ? r.pos : [r.pos.lon, r.pos.lat] 
+        geometry: {
+          type: 'Point',
+          coordinates: Array.isArray(r.pos) ? r.pos : [r.pos.lon, r.pos.lat]
         },
       })),
     } as GeoJSON.FeatureCollection<GeoJSON.Point>
@@ -94,7 +152,13 @@ export default function MapView() {
   // Drawing state (kept local to map component)
   const drawStateRef = useRef<{ active: boolean; coords: [number, number][]; }>({ active:false, coords: [] })
 
+  // rAF gate for hover — avoids re-rendering HoverAndChat on every mousemove pixel (fix 1.12)
+  const hoverRafRef = useRef(0)
+  const pendingHoverRef = useRef<HoverInfo | null>(null)
+
   useEffect(() => {
+    if (mapDidInit) return
+    mapDidInit = true
     if (!containerRef.current || mapRef.current) return
 
     const map = new maplibregl.Map({
@@ -127,31 +191,8 @@ export default function MapView() {
       // @ts-ignore
       console.error("MapLibre error:", e?.error || e);
     });
-    /*
-    map.on('styleimagemissing', async (e) => {
-      const id = e.id
-      const lookup: Record<string, string> = {
-        'icon-ship': '/icons/ship.png',
-        'icon-afb': '/icons/afb.png',
-        'icon-fob': '/icons/fob.png',
-      }
-      const url = lookup[id]
-      if (!url) return
-    
-      try {
-        const img = await loadPng(map, url)
-        if (!map.hasImage(id)) map.addImage(id, img)
-        console.log(`[icons] styleimagemissing resolved ${id}`)
-      } catch (err) {
-        console.error(`[icons] styleimagemissing FAILED ${id}`, err)
-      }
-    })
-    */
-    map.on("load", () => console.log("MapLibre: load fired"));
-    map.on("styledata", () => console.log("MapLibre: styledata"));
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left')
-
 
     map.on('load', async () => {
       // 1) Sources
@@ -161,37 +202,8 @@ export default function MapView() {
       map.addSource(AIRSPACES_SOURCE, { type:'geojson', data: airspacesGeo })
       map.addSource(SHAPES_SOURCE, { type:'geojson', data: shapesGeo })
       map.addSource(REFS_SOURCE, { type:'geojson', data: refsGeo })
-      
-/*
-      // 2) Icons must exist BEFORE symbol layers that reference them
-      const iconDefs = [
-        { id: 'icon-ship', url: '/icons/ship.png' },
-        { id: 'icon-afb',  url: '/icons/afb.png'  },
-        { id: 'icon-fob',  url: '/icons/fob.png'  },
-      ];
-      
-      for (const d of iconDefs) {
-        if (map.hasImage(d.id)) continue;
-        
-        try {
-          // try/catch is now INSIDE the loop so one failure doesn't break everything
-          const img = await new Promise<HTMLImageElement | ImageBitmap>((resolve, reject) => {
-            map.loadImage(d.url, (err, image) => {
-              if (err) return reject(err);
-              if (!image) return reject(new Error(`No image returned for ${d.url}`));
-              resolve(image);
-            });
-          });
-          map.addImage(d.id, img);
-          console.log(`[icons] Successfully loaded ${d.id}`);
-        } catch (e) {
-          console.error(`[icons] Failed to load ${d.id} from ${d.url}:`, e);
-        }
-      }
-*/
 
-
-      // 1. Colored circles for reference points
+      // Reference point circles
       map.addLayer({
         id: 'refs-point',
         type: 'circle',
@@ -201,9 +213,9 @@ export default function MapView() {
           'circle-color': [
             'match',
             ['get', 'kind'],
-            'SHIP', '#00bcd4', // Cyan
-            'AFB',  '#ff9800', // Orange
-            'FOB',  '#4caf50', // Green
+            'SHIP', '#00bcd4',
+            'AFB',  '#ff9800',
+            'FOB',  '#4caf50',
             '#ffffff'
           ],
           'circle-stroke-width': 2,
@@ -211,7 +223,7 @@ export default function MapView() {
         }
       });
 
-      // 2. Text labels for reference points
+      // Reference point labels
       map.addLayer({
         id: 'refs-label',
         type: 'symbol',
@@ -221,7 +233,6 @@ export default function MapView() {
           'text-size': 12,
           'text-offset': [0, 1.2],
           'text-anchor': 'top',
-          // Removed 'text-font' to prevent font-loading crashes
           'text-allow-overlap': true,
         },
         paint: {
@@ -231,20 +242,13 @@ export default function MapView() {
           'text-opacity': 0.95,
         },
       });
-      
-      // Basemap toggle: easiest is to set style layers visibility, but the style is remote.
-      // For prototype, keep basemap always on; toggle just dims it via fog-like raster opacity by applying a CSS filter to container.
-      // (We implement the toggle outside map via overlay opacity; see below.)
 
       // Keypad polygons (transparent fill) for hover/click
       map.addLayer({
         id: 'keypad-fill',
         type: 'fill',
         source: KEYPADS_SOURCE,
-        paint: {
-          'fill-color': '#000000',
-          'fill-opacity': 0.0001,
-        },
+        paint: { 'fill-color': '#000000', 'fill-opacity': 0.0001 },
       })
 
       // Selection highlight for selected keypads
@@ -252,35 +256,25 @@ export default function MapView() {
         id: 'keypad-selected',
         type: 'fill',
         source: KEYPADS_SOURCE,
-        paint: {
-          'fill-color': '#4ba3ff',
-          'fill-opacity': 0.20,
-        },
+        paint: { 'fill-color': '#4ba3ff', 'fill-opacity': 0.20 },
         filter: ['in', ['get','keypadId'], ['literal', []]],
       })
 
       // Grid lines
+      const initGrid = useAppStore.getState().gridOptions
       map.addLayer({
         id: 'grid-killbox',
         type: 'line',
         source: GRID_LINES_SOURCE,
         filter: ['==', ['get','kind'], 'KILLBOX'],
-        paint: {
-          'line-color': gridOptions.gridColor,
-          'line-opacity': gridOptions.gridOpacity,
-          'line-width': gridOptions.killboxLineWidth,
-        },
+        paint: { 'line-color': initGrid.gridColor, 'line-opacity': initGrid.gridOpacity, 'line-width': initGrid.killboxLineWidth },
       })
       map.addLayer({
         id: 'grid-keypad',
         type: 'line',
         source: GRID_LINES_SOURCE,
         filter: ['==', ['get','kind'], 'KEYPAD'],
-        paint: {
-          'line-color': gridOptions.gridColor,
-          'line-opacity': gridOptions.gridOpacity * 0.8,
-          'line-width': gridOptions.keypadLineWidth,
-        },
+        paint: { 'line-color': initGrid.gridColor, 'line-opacity': initGrid.gridOpacity * 0.8, 'line-width': initGrid.keypadLineWidth },
       })
 
       // Killbox labels
@@ -288,31 +282,15 @@ export default function MapView() {
         id: 'grid-labels',
         type: 'symbol',
         source: GRID_LABELS_SOURCE,
-        layout: {
-          'text-field': ['get','label'],
-          'text-size': gridOptions.labelFontSize,
-          //'text-font': ['Noto Sans Regular', 'Open Sans Regular', 'Arial Unicode MS Regular'],
-          'text-allow-overlap': true,
-        },
-        paint: {
-          'text-color': gridOptions.gridColor,
-          'text-opacity': gridOptions.labelOpacity,
-          'text-halo-color': '#000000',
-          'text-halo-width': 1.2,
-        },
+        layout: { 'text-field': ['get','label'], 'text-size': initGrid.labelFontSize, 'text-allow-overlap': true },
+        paint: { 'text-color': initGrid.gridColor, 'text-opacity': initGrid.labelOpacity, 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
       })
 
-      // Master color logic: uses custom color if present, else default state color
-      const airspaceColorLogic: maplibregl.Expression = [
+      // Master color logic (typed loosely — MapLibre style-spec Expression types are incomplete)
+      const airspaceColorLogic: any = [
         'coalesce',
         ['get', 'color'],
-        [
-          'match', ['get','state'],
-          'ACTIVE', '#3cff9e',
-          'COLD', '#ffd24b',
-          'PLANNED', '#4ba3ff',
-          '#999999'
-        ]
+        ['match', ['get','state'], 'ACTIVE', '#3cff9e', 'COLD', '#ffd24b', 'PLANNED', '#4ba3ff', '#999999']
       ];
 
       // Airspaces polygon fill
@@ -320,78 +298,58 @@ export default function MapView() {
         id: 'airspaces-fill',
         type: 'fill',
         source: AIRSPACES_SOURCE,
-        paint: {
-          'fill-color': airspaceColorLogic,
-          'fill-opacity': ['case', ['==', ['get', 'showFill'], false], 0, 0.20],
-        },
+        paint: { 'fill-color': airspaceColorLogic, 'fill-opacity': ['case', ['==', ['get', 'showFill'], false], 0, 0.20] },
       })
 
-      // ACTIVE Outline (Solid)
+      // Outline layers (ACTIVE=solid, PLANNED=dashed, COLD=dot-dashed)
       map.addLayer({
-        id: 'airspaces-outline-active',
-        type: 'line',
-        source: AIRSPACES_SOURCE,
+        id: 'airspaces-outline-active', type: 'line', source: AIRSPACES_SOURCE,
         filter: ['==', ['get', 'state'], 'ACTIVE'],
         paint: { 'line-color': airspaceColorLogic, 'line-width': ['get', 'lineWidth'], 'line-opacity': 0.9 },
       })
-
-      // PLANNED Outline (Dashed)
       map.addLayer({
-        id: 'airspaces-outline-planned',
-        type: 'line',
-        source: AIRSPACES_SOURCE,
+        id: 'airspaces-outline-planned', type: 'line', source: AIRSPACES_SOURCE,
         filter: ['==', ['get', 'state'], 'PLANNED'],
         paint: { 'line-color': airspaceColorLogic, 'line-width': ['get', 'lineWidth'], 'line-opacity': 0.9, 'line-dasharray': [4, 4] },
       })
-
-      // COLD Outline (Dot-Dashed)
       map.addLayer({
-        id: 'airspaces-outline-cold',
-        type: 'line',
-        source: AIRSPACES_SOURCE,
+        id: 'airspaces-outline-cold', type: 'line', source: AIRSPACES_SOURCE,
         filter: ['==', ['get', 'state'], 'COLD'],
         paint: { 'line-color': airspaceColorLogic, 'line-width': ['get', 'lineWidth'], 'line-opacity': 0.9, 'line-dasharray': [4, 2, 1, 2] },
       })
 
-      // Shapes (polygons/lines/points)
-      map.addLayer({
-        id: 'shapes-line',
-        type: 'line',
-        source: SHAPES_SOURCE,
-        filter: ['==', ['geometry-type'], 'LineString'],
-        paint: {
-          'line-color': '#ff8f3d',
-          'line-width': 2,
-          'line-opacity': 0.9,
-        },
-      })
-      map.addLayer({
-        id: 'shapes-poly',
-        type: 'fill',
-        source: SHAPES_SOURCE,
-        filter: ['==', ['geometry-type'], 'Polygon'],
-        paint: {
-          'fill-color': '#ff8f3d',
-          'fill-opacity': 0.12,
-        },
-      })
-      map.addLayer({
-        id: 'shapes-poly-outline',
-        type: 'line',
-        source: SHAPES_SOURCE,
-        filter: ['==', ['geometry-type'], 'Polygon'],
-        paint: { 'line-color': '#ff8f3d', 'line-width': 2, 'line-opacity': 0.85 },
-      })
-      map.addLayer({
-        id: 'shapes-point',
-        type: 'circle',
-        source: SHAPES_SOURCE,
-        filter: ['==', ['geometry-type'], 'Point'],
-        paint: { 'circle-color': '#ff8f3d', 'circle-radius': 5, 'circle-opacity': 0.9 },
-      })
+      // Picasso mode layers (8 slots x 3 states = 24 layers, initially hidden)
+      const initRadius = useAppStore.getState().picassoRadius
+      for (let slot = 0; slot < PICASSO_SLOT_COUNT; slot++) {
+        const [ux, uy] = PICASSO_UNIT_OFFSETS[slot]
+        const translate: [number, number] = [ux * initRadius, uy * initRadius]
+        for (const state of PICASSO_STATES) {
+          const layerDef: maplibregl.LayerSpecification = {
+            id: `picasso-outline-${state.toLowerCase()}-${slot}`,
+            type: 'line',
+            source: AIRSPACES_SOURCE,
+            filter: ['all',
+              ['==', ['get', 'state'], state],
+              ['==', ['get', 'overlapSlot'], slot],
+            ],
+            paint: {
+              'line-color': airspaceColorLogic,
+              'line-width': ['get', 'lineWidth'],
+              'line-opacity': 0.9,
+              'line-translate': translate,
+              ...(PICASSO_DASH[state] ? { 'line-dasharray': PICASSO_DASH[state] } : {}),
+            },
+            layout: { 'visibility': 'none' },
+          }
+          map.addLayer(layerDef as any)
+        }
+      }
 
-      
-      
+      // Shapes (polygons/lines/points)
+      map.addLayer({ id: 'shapes-line', type: 'line', source: SHAPES_SOURCE, filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#ff8f3d', 'line-width': 2, 'line-opacity': 0.9 } })
+      map.addLayer({ id: 'shapes-poly', type: 'fill', source: SHAPES_SOURCE, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#ff8f3d', 'fill-opacity': 0.12 } })
+      map.addLayer({ id: 'shapes-poly-outline', type: 'line', source: SHAPES_SOURCE, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'line-color': '#ff8f3d', 'line-width': 2, 'line-opacity': 0.85 } })
+      map.addLayer({ id: 'shapes-point', type: 'circle', source: SHAPES_SOURCE, filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-color': '#ff8f3d', 'circle-radius': 5, 'circle-opacity': 0.9 } })
 
       map.on('click', (e) => {
         const st = useAppStore.getState()
@@ -414,49 +372,53 @@ export default function MapView() {
         if (shFeat?.properties?.id) return st.selectShape(shFeat.properties.id as string)
         st.clearSelection()
       })
-    
+
+      // Hover with rAF throttle — queries features immediately but batches
+      // the Zustand write to one per animation frame (fix 1.12)
       map.on('mousemove', (e) => {
-        const st = useAppStore.getState()
-    
         const kpFeat = map.queryRenderedFeatures(e.point, { layers: ['keypad-fill'] })[0]
         if (kpFeat?.properties?.keypadId) {
-          st.setHover({ kind:'KEYPAD', keypadId: kpFeat.properties.keypadId as string })
-          return
+          pendingHoverRef.current = { kind:'KEYPAD', keypadId: kpFeat.properties.keypadId as string }
+        } else {
+          const refFeat = map.queryRenderedFeatures(e.point, { layers: ['refs-point'] })[0]
+          if (refFeat?.properties?.label && refFeat?.properties?.keypad) {
+            pendingHoverRef.current = { kind:'REF', label: refFeat.properties.label as string, keypadId: refFeat.properties.keypad as string }
+          } else {
+            const asFeat = map.queryRenderedFeatures(e.point, { layers: ['airspaces-fill'] })[0]
+            if (asFeat?.properties?.id) {
+              pendingHoverRef.current = { kind:'AIRSPACE', airspaceId: asFeat.properties.id as string }
+            } else {
+              const shFeat = map.queryRenderedFeatures(e.point, { layers: ['shapes-line','shapes-poly','shapes-point'] })[0]
+              if (shFeat?.properties?.id) {
+                pendingHoverRef.current = { kind:'SHAPE', shapeId: shFeat.properties.id as string }
+              } else {
+                pendingHoverRef.current = { kind:'NONE' }
+              }
+            }
+          }
         }
-    
-        // refs-point layer exists now, so this won't explode
-        const refFeat = map.queryRenderedFeatures(e.point, { layers: ['refs-point'] })[0]
-        if (refFeat?.properties?.label && refFeat?.properties?.keypad) {
-          st.setHover({ kind:'REF', label: refFeat.properties.label as string, keypadId: refFeat.properties.keypad as string })
-          return
+        if (!hoverRafRef.current) {
+          hoverRafRef.current = requestAnimationFrame(() => {
+            hoverRafRef.current = 0
+            if (pendingHoverRef.current) {
+              useAppStore.getState().setHover(pendingHoverRef.current)
+            }
+          })
         }
-    
-        const asFeat = map.queryRenderedFeatures(e.point, { layers: ['airspaces-fill'] })[0]
-        if (asFeat?.properties?.id) {
-          st.setHover({ kind:'AIRSPACE', airspaceId: asFeat.properties.id as string })
-          return
-        }
-    
-        const shFeat = map.queryRenderedFeatures(e.point, { layers: ['shapes-line','shapes-poly','shapes-point'] })[0]
-        if (shFeat?.properties?.id) {
-          st.setHover({ kind:'SHAPE', shapeId: shFeat.properties.id as string })
-          return
-        }
-    
-        st.setHover({ kind:'NONE' })
       })
-    
-      // 5) Scratch layers LAST (unchanged)
+
+      // Scratch layers (drawing preview)
       map.addSource('scratch', { type:'geojson', data: { type:'FeatureCollection', features: [] } })
       map.addLayer({ id:'scratch-line', type:'line', source:'scratch', paint:{ 'line-color':'#4ba3ff', 'line-width':2.5, 'line-opacity':0.95 }, filter:['==',['get','g'],'line'] })
       map.addLayer({ id:'scratch-fill', type:'fill', source:'scratch', paint:{ 'fill-color':'#4ba3ff', 'fill-opacity':0.15 }, filter:['==',['get','g'],'poly'] })
       map.addLayer({ id:'scratch-pts', type:'circle', source:'scratch', paint:{ 'circle-color':'#4ba3ff', 'circle-radius':4, 'circle-opacity':0.95 }, filter:['==',['get','g'],'pt'] })
-    
     })
 
     return () => {
+      if (hoverRafRef.current) cancelAnimationFrame(hoverRafRef.current)
       map.remove()
       mapRef.current = null
+      mapDidInit = false
       if (containerRef.current) containerRef.current.innerHTML = ''
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -477,28 +439,53 @@ export default function MapView() {
     if (src) src.setData(shapesGeo as any)
   }, [shapesGeo])
 
-  // Apply layer toggles
+  // Apply layer toggles (Rule 1.3: narrow deps to primitives)
+  const { airspaces: airspacesOn, freedraw: freedrawOn, refs: refsOn } = layerToggles
+  const { showGrid, showKillboxLabels } = gridOptions
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
     const setVis = (id: string, on: boolean) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none') }
 
-    setVis('airspaces-fill', layerToggles.airspaces)
-    setVis('airspaces-outline-active', layerToggles.airspaces)
-    setVis('airspaces-outline-planned', layerToggles.airspaces)
-    setVis('airspaces-outline-cold', layerToggles.airspaces)
-    setVis('shapes-line', layerToggles.freedraw)
-    setVis('shapes-poly', layerToggles.freedraw)
-    setVis('shapes-poly-outline', layerToggles.freedraw)
-    setVis('shapes-point', layerToggles.freedraw)
-    setVis('refs-point', layerToggles.refs)
-    setVis('refs-label', layerToggles.refs)
+    setVis('airspaces-fill', airspacesOn)
+    setVis('airspaces-outline-active', airspacesOn && !picassoMode)
+    setVis('airspaces-outline-planned', airspacesOn && !picassoMode)
+    setVis('airspaces-outline-cold', airspacesOn && !picassoMode)
 
-    const gridOn = gridOptions.showGrid
-    setVis('grid-killbox', gridOn)
-    setVis('grid-keypad', gridOn)
-    setVis('grid-labels', gridOn && gridOptions.showKillboxLabels)
-  }, [layerToggles, gridOptions])
+    // Picasso outline layers
+    for (let slot = 0; slot < PICASSO_SLOT_COUNT; slot++) {
+      for (const state of PICASSO_STATES) {
+        setVis(`picasso-outline-${state.toLowerCase()}-${slot}`, airspacesOn && picassoMode)
+      }
+    }
+
+    setVis('shapes-line', freedrawOn)
+    setVis('shapes-poly', freedrawOn)
+    setVis('shapes-poly-outline', freedrawOn)
+    setVis('shapes-point', freedrawOn)
+    setVis('refs-point', refsOn)
+    setVis('refs-label', refsOn)
+
+    setVis('grid-killbox', showGrid)
+    setVis('grid-keypad', showGrid)
+    setVis('grid-labels', showGrid && showKillboxLabels)
+  }, [airspacesOn, freedrawOn, refsOn, showGrid, showKillboxLabels, picassoMode])
+
+  // Picasso radius: imperative helper called from event handler (Rule 1.11)
+  function applyPicassoRadius(r: number) {
+    const map = mapRef.current
+    if (!map) return
+    for (let slot = 0; slot < PICASSO_SLOT_COUNT; slot++) {
+      const [ux, uy] = PICASSO_UNIT_OFFSETS[slot]
+      const translate: [number, number] = [ux * r, uy * r]
+      for (const state of PICASSO_STATES) {
+        const layerId = `picasso-outline-${state.toLowerCase()}-${slot}`
+        if (map.getLayer(layerId)) {
+          map.setPaintProperty(layerId, 'line-translate', translate)
+        }
+      }
+    }
+  }
 
   // Apply grid styling
   useEffect(() => {
@@ -530,115 +517,90 @@ export default function MapView() {
     map.setFilter('keypad-selected', ['in', ['get','keypadId'], ['literal', selectedKeypads]])
   }, [selectedKeypads])
 
-  // Basemap toggle: for simplicity, apply CSS filter to map container
+  // Basemap toggle
   useEffect(() => {
     if (!containerRef.current) return
     containerRef.current.style.filter = layerToggles.basemap ? 'none' : 'grayscale(1) brightness(0.7)'
   }, [layerToggles.basemap])
 
-  // Key handling (Enter/Esc for drawing; E edit is handled at app level but we can finish/cancel here)
-  /* 
+  // Keyboard shortcuts via @accelint/hotkey-manager
   useEffect(() => {
-    const onKey = (ev: KeyboardEvent) => {
-      const map = mapRef.current
-      if (!map) return
+    globalBind()
 
-      if (ev.key === 'Escape') {
-        // cancel drawing or edit
-        const ds = drawStateRef.current
-        ds.active = false
-        ds.coords = []
-        updateScratch(map)
-        cancelEdit()
-        return
-      }
+    const managers = [
+      registerHotkey({
+        id: 'esc',
+        key: { code: Keycode.Escape },
+        onKeyDown: () => {
+          const map = mapRef.current
+          if (!map) return
+          const st = useAppStore.getState()
+          const ds = drawStateRef.current
+          ds.active = false
+          ds.coords = []
+          updateScratch(map)
+          st.cancelEdit()
+          if (st.mode === 'KEYPAD_SELECT') st.clearSelection()
+        },
+      }),
+      registerHotkey({
+        id: 'enter',
+        key: { code: Keycode.Enter },
+        onKeyDown: () => {
+          const map = mapRef.current
+          if (!map) return
+          const st = useAppStore.getState()
+          if (st.mode === 'FREEDRAW') {
+            const ds = drawStateRef.current
+            if (!ds.active) return
+            const coords = ds.coords.slice()
+            ds.active = false
+            ds.coords = []
+            updateScratch(map)
+            st.submitDrawResult({ drawType: st.drawType, coords })
+          } else if (st.mode === 'KEYPAD_SELECT' && st.selectedKeypads.length > 0) {
+            st.submitKeypadResult({ keypads: st.selectedKeypads })
+          }
+        },
+      }),
+      registerHotkey({
+        id: 'key-a',
+        key: { code: Keycode.KeyA },
+        onKeyDown: (event) => {
+          event.preventDefault()
+          const st = useAppStore.getState()
+          if (st.mode !== 'KEYPAD_SELECT') {
+            st.setMode('KEYPAD_SELECT')
+          } else if (st.selectedKeypads.length > 0) {
+            st.submitKeypadResult({ keypads: st.selectedKeypads })
+          }
+        },
+      }),
+      registerHotkey({
+        id: 'key-f',
+        key: { code: Keycode.KeyF },
+        onKeyDown: () => { useAppStore.getState().setMode('FREEDRAW') },
+      }),
+      registerHotkey({
+        id: 'key-e',
+        key: { code: Keycode.KeyE },
+        onKeyDown: () => { useAppStore.getState().startEditSelected() },
+      }),
+      registerHotkey({
+        id: 'delete',
+        key: [{ code: Keycode.Delete }, { code: Keycode.Backspace }],
+        onKeyDown: () => { useAppStore.getState().archiveSelected() },
+      }),
+    ]
 
-      if (ev.key === 'Enter') {
-        if (mode !== 'FREEDRAW') return
-        const ds = drawStateRef.current
-        if (!ds.active) return
-        const coords = ds.coords.slice()
-        ds.active = false
-        ds.coords = []
-        updateScratch(map)
-        // finish geometry -> send to store via a custom DOM event for App to open modal
-        const detail = { drawType, coords }
-        window.dispatchEvent(new CustomEvent('draw:complete', { detail }))
-      }
+    const cleanups = managers.map(m => m.bind())
+
+    return () => {
+      cleanups.forEach(c => { c() })
+      managers.forEach(m => { unregisterHotkey(m) })
+      globalUnbind()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [mode, drawType, cancelEdit])
-*/
-// Key handling (Enter/Esc/A for drawing and selection)
-useEffect(() => {
-  const onKey = (ev: KeyboardEvent) => {
-    // 1. Ignore shortcuts if the user is typing inside an input or textarea
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes((ev.target as HTMLElement).tagName)) {
-      return;
-    }
-
-    const map = mapRef.current;
-    if (!map) return;
-    
-    // Get fresh state directly to avoid dependency array stale-state issues
-    const st = useAppStore.getState();
-
-    if (ev.key === 'Escape') {
-      // Cancel drawing or edit
-      const ds = drawStateRef.current;
-      ds.active = false;
-      ds.coords = [];
-      updateScratch(map);
-      st.cancelEdit();
-      
-      // Also clear keypad selection if we cancel out
-      if (st.mode === 'KEYPAD_SELECT') {
-        st.clearSelection();
-        // st.setMode('SELECT'); // Optional: kick back to default mode if your store has setMode
-      }
-      return;
-    }
-
-    // 2. Handling Enter (Confirm Draw or Confirm Keypad)
-    if (ev.key === 'Enter') {
-      if (st.mode === 'FREEDRAW') {
-        const ds = drawStateRef.current;
-        if (!ds.active) return;
-        const coords = ds.coords.slice();
-        ds.active = false;
-        ds.coords = [];
-        updateScratch(map);
-        const detail = { drawType: st.drawType, coords };
-        window.dispatchEvent(new CustomEvent('draw:complete', { detail }));
-      } else if (st.mode === 'KEYPAD_SELECT' && st.selectedKeypads.length > 0) {
-        // Confirm keypad selection via Enter
-        window.dispatchEvent(new CustomEvent('keypad:complete', { detail: { keypads: st.selectedKeypads } }));
-      }
-    }
-
-    // 3. Handling 'A' (Toggle Mode or Confirm)
-    if (ev.key.toLowerCase() === 'a') {
-      ev.preventDefault(); // Prevents the blue box and browser defaults!
-
-      if (st.mode !== 'KEYPAD_SELECT') {
-        // Assuming your store has a method to change the mode. 
-        // Update this to match your store's exact function name if it's different!
-        useAppStore.setState({ mode: 'KEYPAD_SELECT' }); 
-      } else {
-        // If already in KEYPAD_SELECT mode, act like we pressed Enter
-        if (st.selectedKeypads.length > 0) {
-          window.dispatchEvent(new CustomEvent('keypad:complete', { detail: { keypads: st.selectedKeypads } }));
-        }
-      }
-    }
-  };
-
-  window.addEventListener('keydown', onKey);
-  return () => window.removeEventListener('keydown', onKey);
-}, []); // Empty dependency array is fine since we use .getState() inside 
-
-  // When an editMode redraw completes, App will call store update; map doesn't need special handling here.
+  }, []);
 
   function updateScratch(map: MLMap) {
     const ds = drawStateRef.current
@@ -649,7 +611,8 @@ useEffect(() => {
     if (ds.coords.length >= 2) {
       feats.push({ type:'Feature', properties:{g:'line'}, geometry:{ type:'LineString', coordinates: ds.coords } })
     }
-    if (drawType === 'POLYGON' && ds.coords.length >= 3) {
+    // Use getState() for drawType to avoid stale closure
+    if (useAppStore.getState().drawType === 'POLYGON' && ds.coords.length >= 3) {
       feats.push({
         type:'Feature',
         properties:{g:'poly'},
@@ -661,140 +624,72 @@ useEffect(() => {
     src.setData({ type:'FeatureCollection', features: feats } as any)
   }
 
-    return (
+  return (
     <div className="mapWrap">
-      <div ref={containerRef} className="map" style={{ height: '100%' }} />
+      <div ref={containerRef} className="map" style={S_MAP_HEIGHT} />
 
-      {/* RIGHT-SIDE OVERLAY STACK */}
       <div className="mapOverlays">
         {/* SHORTCUTS (collapsible) */}
         <div className="legend">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              marginBottom: 8,
-            }}
-            onClick={() => setShortcutsMinimized(v => !v)}
-            title="Click to expand/collapse"
-          >
-            <h4 style={{ margin: 0 }}>
-              Shortcuts {shortcutsMinimized ? '[minimized]' : ''}
-            </h4>
-            <span style={{ color: '#9fb1c5', fontSize: 12 }}>
-              {shortcutsMinimized ? '▸' : '▾'}
-            </span>
-          </div>
+          <button type="button" style={S_OVERLAY_HEADER} onClick={() => setShortcutsMinimized(v => !v)} title="Click to expand/collapse">
+            <h4 style={S_H4}><Keyboard width={14} height={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Shortcuts</h4>
+            {shortcutsMinimized ? <ChevronRight width={14} height={14} style={S_COLLAPSE_ICON} /> : <ChevronDown width={14} height={14} style={S_COLLAPSE_ICON} />}
+          </button>
 
-          {/* Mode is ALWAYS visible even when minimized */}
-          <div style={{ marginBottom: 8, color: '#9fb1c5', fontSize: 12 }}>
+          <div style={S_MODE_LINE}>
             Mode: <b>{mode}</b> {mode === 'FREEDRAW' ? `(${drawType})` : ''}
           </div>
 
-          {!shortcutsMinimized && (
-            <>
-              <div className="row"><span><kbd>A</kbd></span><span>Create airspace (keypads)</span></div>
-              <div className="row"><span><kbd>F</kbd></span><span>Free draw mode</span></div>
-              <div className="row"><span><kbd>E</kbd></span><span>Edit selected</span></div>
-              <div className="row"><span><kbd>Enter</kbd></span><span>Confirm draw</span></div>
-              <div className="row"><span><kbd>Esc</kbd></span><span>Cancel</span></div>
-              <div className="row"><span><kbd>Del</kbd></span><span>Archive</span></div>
-            </>
-          )}
+          {!shortcutsMinimized && SHORTCUTS_JSX}
         </div>
 
         {/* GRID & LAYERS (collapsible) */}
         <div className="mapTools">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              marginBottom: 8,
-            }}
-            onClick={() => setToolsMinimized(v => !v)}
-            title="Click to expand/collapse"
-          >
-            <h4 style={{ margin: 0 }}>
-              Grid & Layers {toolsMinimized ? '[minimized]' : ''}
-            </h4>
-            <span style={{ color: '#9fb1c5', fontSize: 12 }}>
-              {toolsMinimized ? '▸' : '▾'}
-            </span>
-          </div>
+          <button type="button" style={S_OVERLAY_HEADER} onClick={() => setToolsMinimized(v => !v)} title="Click to expand/collapse">
+            <h4 style={S_H4}><Layers width={14} height={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Grid & Layers</h4>
+            {toolsMinimized ? <ChevronRight width={14} height={14} style={S_COLLAPSE_ICON} /> : <ChevronDown width={14} height={14} style={S_COLLAPSE_ICON} />}
+          </button>
 
           {!toolsMinimized && (
             <>
               <div className="section">
-                <label><span>Show grid</span><input type="checkbox" checked={gridOptions.showGrid} onChange={(e)=>useAppStore.getState().setGridOptions({showGrid:e.target.checked})} /></label>
-                <label><span>Grid opacity</span><input type="range" min={0} max={1} step={0.01} value={gridOptions.gridOpacity} onChange={(e)=>useAppStore.getState().setGridOptions({gridOpacity: parseFloat(e.target.value)})} /></label>
-                <label><span>Grid color</span><input type="color" value={gridOptions.gridColor} onChange={(e)=>useAppStore.getState().setGridOptions({gridColor:e.target.value})} /></label>
-                <label><span>Killbox width</span><input type="range" min={1} max={8} step={1} value={gridOptions.killboxLineWidth} onChange={(e)=>useAppStore.getState().setGridOptions({killboxLineWidth: parseInt(e.target.value,10)})} /></label>
-                <label><span>Keypad width</span><input type="range" min={1} max={6} step={1} value={gridOptions.keypadLineWidth} onChange={(e)=>useAppStore.getState().setGridOptions({keypadLineWidth: parseInt(e.target.value,10)})} /></label>
-                <label><span>Killbox labels</span><input type="checkbox" checked={gridOptions.showKillboxLabels} onChange={(e)=>useAppStore.getState().setGridOptions({showKillboxLabels:e.target.checked})} /></label>
-                <label><span>Label size</span><input type="range" min={10} max={22} step={1} value={gridOptions.labelFontSize} onChange={(e)=>useAppStore.getState().setGridOptions({labelFontSize: parseInt(e.target.value,10)})} /></label>
-                <label><span>Label opacity</span><input type="range" min={0} max={1} step={0.01} value={gridOptions.labelOpacity} onChange={(e)=>useAppStore.getState().setGridOptions({labelOpacity: parseFloat(e.target.value)})} /></label>
+                <Switch isSelected={gridOptions.showGrid} onChange={(v) => useAppStore.getState().setGridOptions({showGrid: v})} labelPosition="start">Show grid</Switch>
+                <Slider label="Grid opacity" minValue={0} maxValue={1} step={0.01} value={gridOptions.gridOpacity} onChange={(v) => useAppStore.getState().setGridOptions({gridOpacity: v as number})} showValueLabels={false} layout="grid" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+                  <span>Grid color</span>
+                  <ColorPicker items={GRID_COLOR_SWATCHES} value={gridOptions.gridColor} onChange={(color) => useAppStore.getState().setGridOptions({gridColor: color.toString('hex')})} />
+                </div>
+                <Slider label="Killbox width" minValue={1} maxValue={8} step={1} value={gridOptions.killboxLineWidth} onChange={(v) => useAppStore.getState().setGridOptions({killboxLineWidth: v as number})} showValueLabels={false} layout="grid" />
+                <Slider label="Keypad width" minValue={1} maxValue={6} step={1} value={gridOptions.keypadLineWidth} onChange={(v) => useAppStore.getState().setGridOptions({keypadLineWidth: v as number})} showValueLabels={false} layout="grid" />
+                <Switch isSelected={gridOptions.showKillboxLabels} onChange={(v) => useAppStore.getState().setGridOptions({showKillboxLabels: v})} labelPosition="start">Killbox labels</Switch>
+                <Slider label="Label size" minValue={10} maxValue={22} step={1} value={gridOptions.labelFontSize} onChange={(v) => useAppStore.getState().setGridOptions({labelFontSize: v as number})} showValueLabels={false} layout="grid" />
+                <Slider label="Label opacity" minValue={0} maxValue={1} step={0.01} value={gridOptions.labelOpacity} onChange={(v) => useAppStore.getState().setGridOptions({labelOpacity: v as number})} showValueLabels={false} layout="grid" />
               </div>
 
               <div className="section">
-                <label><span>Basemap</span><input type="checkbox" checked={layerToggles.basemap} onChange={(e)=>useAppStore.getState().setLayerToggle('basemap', e.target.checked)} /></label>
-                <label><span>Airspaces</span><input type="checkbox" checked={layerToggles.airspaces} onChange={(e)=>useAppStore.getState().setLayerToggle('airspaces', e.target.checked)} /></label>
-                <label><span>Routes</span><input type="checkbox" checked={layerToggles.routes} onChange={(e)=>useAppStore.getState().setLayerToggle('routes', e.target.checked)} /></label>
-                <label><span>Free-draw</span><input type="checkbox" checked={layerToggles.freedraw} onChange={(e)=>useAppStore.getState().setLayerToggle('freedraw', e.target.checked)} /></label>
-                <label><span>ACMs (stub)</span><input type="checkbox" checked={layerToggles.acms} onChange={(e)=>useAppStore.getState().setLayerToggle('acms', e.target.checked)} /></label>
-                <label><span>Reference points</span><input type="checkbox" checked={layerToggles.refs} onChange={(e)=>useAppStore.getState().setLayerToggle('refs', e.target.checked)} /></label>
+                <Switch isSelected={layerToggles.basemap} onChange={(v) => useAppStore.getState().setLayerToggle('basemap', v)} labelPosition="start">Basemap</Switch>
+                <Switch isSelected={layerToggles.airspaces} onChange={(v) => useAppStore.getState().setLayerToggle('airspaces', v)} labelPosition="start">Airspaces</Switch>
+                <Switch isSelected={layerToggles.routes} onChange={(v) => useAppStore.getState().setLayerToggle('routes', v)} labelPosition="start">Routes</Switch>
+                <Switch isSelected={layerToggles.freedraw} onChange={(v) => useAppStore.getState().setLayerToggle('freedraw', v)} labelPosition="start">Free-draw</Switch>
+                <Switch isSelected={layerToggles.acms} onChange={(v) => useAppStore.getState().setLayerToggle('acms', v)} labelPosition="start">ACMs (stub)</Switch>
+                <Switch isSelected={layerToggles.refs} onChange={(v) => useAppStore.getState().setLayerToggle('refs', v)} labelPosition="start">Reference points</Switch>
+                <Switch isSelected={picassoMode} onChange={() => useAppStore.getState().togglePicassoMode()} labelPosition="start">Picasso mode</Switch>
+                {picassoMode && (
+                  <Slider label="Offset radius" minValue={4} maxValue={16} step={1} value={picassoRadius} onChange={(v) => { const r = v as number; useAppStore.getState().setPicassoRadius(r); applyPicassoRadius(r) }} showValueLabels={false} layout="grid" />
+                )}
               </div>
             </>
           )}
 
-          {/* Draw type ALWAYS visible (even when minimized) */}
           <div className="section">
-            <label>
-              <span>Draw type</span>
-              <select value={drawType} onChange={(e)=>useAppStore.getState().setDrawType(e.target.value as any)}>
-                <option value="POLYGON">Polygon</option>
-                <option value="ROUTE">Route line</option>
-                <option value="POINT">Point</option>
-              </select>
-            </label>
+            <SelectField label="Draw type" size="small" selectedKey={drawType} onSelectionChange={(key) => useAppStore.getState().setDrawType(key as 'POLYGON' | 'ROUTE' | 'POINT')}>
+              <OptionsItem id="POLYGON">Polygon</OptionsItem>
+              <OptionsItem id="ROUTE">Route line</OptionsItem>
+              <OptionsItem id="POINT">Point</OptionsItem>
+            </SelectField>
           </div>
         </div>
       </div>
     </div>
   )
-}
-
-//function loadPng(map: MLMap, url: string): Promise<HTMLImageElement | ImageBitmap> {
-//  return new Promise((resolve, reject) => {
-//    (map as any).loadImage(url, (err: any, image: any) => {
-//      if (err) return reject(err)
-//      if (!image) return reject(new Error(`map.loadImage returned no image for: ${url}`))
-//      resolve(image as HTMLImageElement | ImageBitmap)
-//    })
-//  })
-//}
-
-
-//async function ensureIcons(map: maplibregl.Map) {
-//  const icons = [
-//    { id: 'icon-ship', url: '/icons/ship.png' },
-//    { id: 'icon-afb',  url: '/icons/afb.png' },
-//    { id: 'icon-fob',  url: '/icons/fob.png' },
-//  ]
-//
-//  for (const i of icons) {
-//    if (map.hasImage(i.id)) continue
-//    try {
-//      const img = await loadPng(map, i.url)
-//      map.addImage(i.id, img)
-//      console.log(`[icons] added ${i.id} from ${i.url}`)
-//    } catch (e) {
-//      console.error(`[icons] FAILED ${i.id} from ${i.url}`, e)
-//      // keep going so grid/layers still load
-//    }
-//  }
-//}
-
+})

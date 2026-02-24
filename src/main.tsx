@@ -1,11 +1,14 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
+import { ThemeProvider, PortalProvider } from '@accelint/design-toolkit'
 import App from './App'
+import '@accelint/design-foundation/styles'
 import './styles.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  // <React.StrictMode>
-    <App />
-  // </React.StrictMode>
+createRoot(document.getElementById('root')!).render(
+  <ThemeProvider defaultMode="dark">
+    <PortalProvider>
+      <App />
+    </PortalProvider>
+  </ThemeProvider>
 )

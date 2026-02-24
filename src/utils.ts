@@ -123,17 +123,23 @@ function keypadNumberFromWithin(r: number, c: number): number {
   return grid[r][c]
 }
 
+// Module-level cache for keypadPolygon — only 108 possible keypads, pure function (fix 3.3)
+const keypadPolyCache = new Map<string, GeoJSON.Polygon | null>()
+
 export function keypadPolygon(keypadId: string): GeoJSON.Polygon | null {
+  const cached = keypadPolyCache.get(keypadId)
+  if (cached !== undefined) return cached
+
   // keypadId like "23AF6"
   const m = keypadId.match(/^(\d{2})([A-Z]{2})([1-9])$/)
-  if (!m) return null
+  if (!m) { keypadPolyCache.set(keypadId, null); return null }
   const killNum = m[1]
   const killLet = m[2]
   const kp = parseInt(m[3],10)
 
   const row = KILLBOX_ROWS.indexOf(killNum)
   const col = KILLBOX_COLS.indexOf(killLet)
-  if (row < 0 || col < 0) return null
+  if (row < 0 || col < 0) { keypadPolyCache.set(keypadId, null); return null }
 
   const within = withinFromKeypad(kp)
   const totalCols = 12
@@ -151,7 +157,7 @@ export function keypadPolygon(keypadId: string): GeoJSON.Polygon | null {
   const p11 = fracToLatLon(x1, y1)
   const p01 = fracToLatLon(x0, y1)
 
-  return {
+  const result: GeoJSON.Polygon = {
     type: 'Polygon',
     coordinates: [[
       [p00.lon, p00.lat],
@@ -161,6 +167,8 @@ export function keypadPolygon(keypadId: string): GeoJSON.Polygon | null {
       [p00.lon, p00.lat],
     ]]
   }
+  keypadPolyCache.set(keypadId, result)
+  return result
 }
 
 function withinFromKeypad(kp: number): {r:number;c:number} {

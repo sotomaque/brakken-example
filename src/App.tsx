@@ -1,161 +1,133 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Button } from '@accelint/design-toolkit'
+import { PanelOpen, PanelClosed } from '@accelint/icons'
 import MapView from './MapView'
 import RightPanel from './RightPanel'
 import HoverAndChat from './HoverAndChat'
 import CreateAirspaceModal from './CreateAirspaceModal'
-import { useAppStore } from './store'
-import { uid, parseKeypadString, polygonFromKeypads, deriveKeypadsFromPolygon, deriveKeypadsFromLine, deriveKeypadsFromPoint } from './utils'
-import type { Altitude } from './types'
+import { useAppStore, type EditMode } from './store'
+import { deriveKeypadsFromPolygon } from './utils'
 
 type PendingCreate =
   | null
   | { kind: 'KEYPAD' }
   | { kind: 'FREEDRAW'; drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number, number][] }
 
-export default function App() {
-  const { mode, setMode, drawType, setDrawType, selectedKeypads, createAirspaceFromKeypads, createAirspaceFromPolygon,
-    addShape, editMode, cancelEdit, selectedId, archiveSelected, startEditSelected, airspaces, shapes,
-    updateAirspace, updateShapeGeometry,
-  } = useAppStore()
+const S_GRID = { display:'grid', gridTemplateRows:'1fr auto', height:'100%' } as const
 
+export default function App() {
   const [pending, setPending] = useState<PendingCreate>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('Create Airspace')
   const [modalNote, setModalNote] = useState<string | undefined>(undefined)
+  const [panelOpen, setPanelOpen] = useState(true)
 
-  // Global keyboard shortcuts
+  // Transient Zustand subscriptions — react to pending results without
+  // subscribing in the render cycle (fixes 1.1, 1.11)
   useEffect(() => {
-    const onKey = (ev: KeyboardEvent) => {
-      // 1. Guard to prevent hotkeys from firing when typing in input fields
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((ev.target as HTMLElement).tagName)) {
-        return;
-      }
+    const unsub = useAppStore.subscribe((state, prev) => {
+      // Draw completion
+      if (state.pendingDrawResult && state.pendingDrawResult !== prev.pendingDrawResult) {
+        const detail = state.pendingDrawResult
+        useAppStore.getState().clearPendingDraw()
 
-      const key = ev.key.toLowerCase()
-
-      if (key === 'f') {
-        setMode('FREEDRAW')
-        return
-      }
-
-      if (key === 'e') {
-        startEditSelected()
-        return
-      }
-
-      if (key === 'delete' || ev.key === 'Backspace') {
-        archiveSelected()
-        return
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [selectedKeypads, setMode, startEditSelected, archiveSelected])
-
-  // Listen for draw completion from MapView (Enter)
-  useEffect(() => {
-    const onComplete = (ev: Event) => {
-      const ce = ev as CustomEvent
-      const detail = ce.detail as { drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number, number][] }
-      // If we're in redraw mode, apply immediately without modal
-      const em = useAppStore.getState().editMode
-      if (em && em.kind === 'REDRAW_GEOMETRY') {
-        applyRedraw(em, detail)
-        useAppStore.getState().cancelEdit()
-        useAppStore.getState().setMode('SELECT')
-        return
-      }
-
-      // Otherwise, free draw creates either a shape (ROUTE/POINT) or an airspace (POLYGON default).
-      // We treat POLYGON as airspace unless user wants to create a non-airspace free shape; we keep it simple:
-      // - POLYGON => create AIRSPACE
-      // - ROUTE/POINT => create FreeDrawShape
-      setPending({ kind:'FREEDRAW', drawType: detail.drawType, coords: detail.coords })
-      if (detail.drawType === 'POLYGON') {
-        setModalTitle('Create Airspace (free-draw polygon)')
-        setModalNote('Polygon created. Enter callsign + altitude to create the airspace.')
-        setModalOpen(true)
-      } else {
-        // Create shape directly, prompt for label? Keep minimal: auto-label and create.
-        const label = detail.drawType === 'ROUTE' ? `Route-${new Date().toISOString().slice(11,19)}` : `Point-${new Date().toISOString().slice(11,19)}`
-        if (detail.drawType === 'ROUTE') {
-          addShape({
-            label,
-            shapeType: 'ROUTE',
-            tags: [],
-            geometry: { type:'LineString', coordinates: detail.coords },
-          })
-        } else {
-          const p = detail.coords[detail.coords.length-1] ?? detail.coords[0]
-          addShape({
-            label,
-            shapeType: 'POINT',
-            tags: [],
-            geometry: { type:'Point', coordinates: p },
-          })
+        const em = useAppStore.getState().editMode
+        if (em && em.kind === 'REDRAW_GEOMETRY') {
+          applyRedraw(em, detail)
+          useAppStore.getState().cancelEdit()
+          useAppStore.getState().setMode('SELECT')
+          return
         }
-        useAppStore.getState().setMode('SELECT')
+
+        setPending({ kind:'FREEDRAW', drawType: detail.drawType, coords: detail.coords })
+        if (detail.drawType === 'POLYGON') {
+          setModalTitle('Create Airspace (free-draw polygon)')
+          setModalNote('Polygon created. Enter callsign + altitude to create the airspace.')
+          setModalOpen(true)
+        } else {
+          const label = detail.drawType === 'ROUTE' ? `Route-${new Date().toISOString().slice(11,19)}` : `Point-${new Date().toISOString().slice(11,19)}`
+          if (detail.drawType === 'ROUTE') {
+            useAppStore.getState().addShape({
+              label,
+              shapeType: 'ROUTE',
+              tags: [],
+              geometry: { type:'LineString', coordinates: detail.coords },
+            })
+          } else {
+            const p = detail.coords[detail.coords.length-1] ?? detail.coords[0]
+            useAppStore.getState().addShape({
+              label,
+              shapeType: 'POINT',
+              tags: [],
+              geometry: { type:'Point', coordinates: p },
+            })
+          }
+          useAppStore.getState().setMode('SELECT')
+        }
       }
-    }
-    window.addEventListener('draw:complete', onComplete)
-    return () => window.removeEventListener('draw:complete', onComplete)
+
+      // Keypad selection completion
+      if (state.pendingKeypadResult && state.pendingKeypadResult !== prev.pendingKeypadResult) {
+        const { keypads } = state.pendingKeypadResult
+        useAppStore.getState().clearPendingKeypad()
+
+        if (keypads.length === 0) return
+
+        setPending({ kind: 'KEYPAD' })
+        setModalTitle('Create Airspace (from keypads)')
+        setModalNote(`Selected keypads: ${keypads.slice().sort().join(' ')}`)
+        setModalOpen(true)
+      }
+    })
+    return unsub
   }, [])
 
-  // Listen for keypad selection completion from MapView (Enter or second 'A' press)
-  useEffect(() => {
-    const onKeypadComplete = (ev: Event) => {
-      const ce = ev as CustomEvent
-      const keypads = ce.detail.keypads as string[]
-
-      if (keypads.length === 0) return
-      
-      setPending({ kind: 'KEYPAD' })
-      setModalTitle('Create Airspace (from keypads)')
-      setModalNote(`Selected keypads: ${keypads.slice().sort().join(' ')}`)
-      setModalOpen(true)
-    }
-    
-    window.addEventListener('keypad:complete', onKeypadComplete)
-    return () => window.removeEventListener('keypad:complete', onKeypadComplete)
-  }, [])
-
-  function applyRedraw(em: any, detail: { drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number, number][] }) {
+  function applyRedraw(em: Extract<EditMode, { kind: 'REDRAW_GEOMETRY' }>, detail: { drawType: 'POLYGON'|'ROUTE'|'POINT'; coords: [number, number][] }) {
+    const st = useAppStore.getState()
     if (em.targetType === 'AIRSPACE') {
-      const id = em.targetId as string
-      const src = airspaces.find(a=>a.id===id)
+      const src = st.airspaces.find(a=>a.id===em.targetId)
       if (!src) return
       if (detail.drawType !== 'POLYGON') return
       const poly: GeoJSON.Polygon = { type:'Polygon', coordinates:[[...detail.coords, detail.coords[0]]] }
       const keypads = deriveKeypadsFromPolygon(poly).sort()
-      updateAirspace(id, { geometry: poly, keypads, kind: 'FREEDRAW' })
+      st.updateAirspace(em.targetId, { geometry: poly, keypads, kind: 'FREEDRAW' })
     } else {
-      const id = em.targetId as string
-      const src = shapes.find(s=>s.id===id)
+      const src = st.shapes.find(s=>s.id===em.targetId)
       if (!src) return
       if (detail.drawType === 'POLYGON') {
         const poly: GeoJSON.Polygon = { type:'Polygon', coordinates:[[...detail.coords, detail.coords[0]]] }
-        updateShapeGeometry(id, poly)
+        st.updateShapeGeometry(em.targetId, poly)
       } else if (detail.drawType === 'ROUTE') {
-        updateShapeGeometry(id, { type:'LineString', coordinates: detail.coords })
+        st.updateShapeGeometry(em.targetId, { type:'LineString', coordinates: detail.coords })
       } else {
         const p = detail.coords[detail.coords.length-1] ?? detail.coords[0]
-        updateShapeGeometry(id, { type:'Point', coordinates: p })
+        st.updateShapeGeometry(em.targetId, { type:'Point', coordinates: p })
       }
     }
   }
 
   return (
-    <div className="app">
+    <div className="app" style={{ gridTemplateColumns: panelOpen ? '1fr 420px' : '1fr' }}>
       <div className="mapWrap">
         <MapView />
+        <Button
+          variant="icon"
+          size="small"
+          onPress={() => setPanelOpen(v => !v)}
+          style={{ position: 'absolute', top: 10, left: 10, zIndex: 6, background: 'rgba(18,25,35,0.92)', border: '1px solid var(--border)', borderRadius: 8 }}
+        >
+          {panelOpen ? <PanelOpen width={16} height={16} /> : <PanelClosed width={16} height={16} />}
+        </Button>
       </div>
 
-      <div className="rightPanel">
-        <div style={{ display:'grid', gridTemplateRows:'1fr auto', height:'100%' }}>
-          <RightPanel />
-          <HoverAndChat />
+      {panelOpen && (
+        <div className="rightPanel">
+          <div style={S_GRID}>
+            <RightPanel />
+            <HoverAndChat />
+          </div>
         </div>
-      </div>
+      )}
 
       <CreateAirspaceModal
         open={modalOpen}
@@ -165,12 +137,12 @@ export default function App() {
         onCreate={({ callsign, altitude, state }) => {
           if (!pending) return
           if (pending.kind === 'KEYPAD') {
-            createAirspaceFromKeypads({ callsign, altitude, state })
+            useAppStore.getState().createAirspaceFromKeypads({ callsign, altitude, state })
           } else if (pending.kind === 'FREEDRAW' && pending.drawType === 'POLYGON') {
             const coords = pending.coords
             if (coords.length < 3) return
             const poly: GeoJSON.Polygon = { type:'Polygon', coordinates:[[...coords, coords[0]]] }
-            createAirspaceFromPolygon({ callsign, altitude, state, polygon: poly })
+            useAppStore.getState().createAirspaceFromPolygon({ callsign, altitude, state, polygon: poly })
           }
           useAppStore.getState().setMode('SELECT')
         }}
