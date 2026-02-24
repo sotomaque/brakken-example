@@ -20,9 +20,9 @@ import {
 import { AlertBase, Delete, Edit, Grid, PolygonTool } from '@accelint/icons'
 import { type CSSProperties, type MouseEvent, memo, useCallback, useMemo, useState } from 'react'
 import type { Key } from 'react-aria-components'
-import { useAppStore } from './store'
-import type { Aircraft, AirspaceReservation } from './types'
-import { fmtAlt } from './utils'
+import { useAppStore } from '@/store'
+import type { Aircraft, AirspaceReservation } from '@/lib/types'
+import { fmtAlt } from '@/lib/utils'
 
 const QUICK_COLORS = [
   { label: 'Green', hex: '#3cff9e' },
@@ -315,9 +315,7 @@ const AirspaceRow = memo(function AirspaceRow({
           />
 
           <div style={S_SPAN2}>
-            <span style={S_STYLE_LABEL}>
-              Style & Color
-            </span>
+            <span style={S_STYLE_LABEL}>Style & Color</span>
             <div style={S_STYLE_BOX}>
               <Checkbox
                 isSelected={a.showFill !== false}
@@ -458,10 +456,7 @@ export default memo(function RightPanel() {
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set())
   const [ctx, setCtx] = useState<{ x: number; y: number; airspaceId: string } | null>(null)
 
-  const aircraftByCallsign = useMemo(
-    () => new Map(aircraft.map(a => [a.callsign, a])),
-    [aircraft],
-  )
+  const aircraftByCallsign = useMemo(() => new Map(aircraft.map(a => [a.callsign, a])), [aircraft])
 
   const conflictSet = useMemo(() => {
     const map = new Map<string, ConflictInfo>()
@@ -622,9 +617,7 @@ export default memo(function RightPanel() {
           style={{ ...S_CTX_MENU, left: ctx.x, top: ctx.y }}
           onMouseDown={e => e.stopPropagation()}
         >
-          <div style={S_CTX_LABEL}>
-            Row actions
-          </div>
+          <div style={S_CTX_LABEL}>Row actions</div>
           <Button
             variant="outline"
             size="small"

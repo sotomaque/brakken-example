@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { SCENARIO } from './scenario'
+import { SCENARIO } from './lib/scenario'
 import type {
   Aircraft,
   AirspaceReservation,
@@ -9,7 +9,7 @@ import type {
   LayerToggles,
   Scenario,
   Scope,
-} from './types'
+} from './lib/types'
 import {
   altitudeConflicts,
   deriveKeypadsFromLine,
@@ -18,7 +18,7 @@ import {
   parseKeypadString,
   polygonFromKeypads,
   uid,
-} from './utils'
+} from './lib/utils'
 
 export type Mode = 'SELECT' | 'KEYPAD_SELECT' | 'FREEDRAW'
 export type DrawType = 'POLYGON' | 'ROUTE' | 'POINT'

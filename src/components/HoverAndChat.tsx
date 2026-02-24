@@ -1,8 +1,8 @@
 import { Button, Checkbox, TextField } from '@accelint/design-toolkit'
 import { type CSSProperties, memo, useMemo } from 'react'
-import { SCENARIO } from './scenario'
-import { useAppStore } from './store'
-import { fmtAlt, parseTimeZ, toHHMMSS } from './utils'
+import { SCENARIO } from '@/lib/scenario'
+import { useAppStore } from '@/store'
+import { fmtAlt, parseTimeZ, toHHMMSS } from '@/lib/utils'
 
 const TIME_REGEX = /^(\d{2}):(\d{2}):(\d{2})$/
 const S_CHAT_HEADER_ROW: CSSProperties = { display: 'flex', gap: 6, alignItems: 'center' }

@@ -237,7 +237,9 @@ body {
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
   box-shadow: 0 4px 20px rgba(42, 255, 94, 0.3);
 }
 .spamPopupCta:hover {

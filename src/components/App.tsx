@@ -6,9 +6,9 @@ import HoverAndChat from './HoverAndChat'
 import MapView from './MapView'
 import RightPanel from './RightPanel'
 import SpamAd from './SpamAd'
-import { type EditMode, useAppStore } from './store'
-import type { AirspaceState, Altitude } from './types'
-import { deriveKeypadsFromPolygon } from './utils'
+import { type EditMode, useAppStore } from '@/store'
+import type { AirspaceState, Altitude } from '@/lib/types'
+import { deriveKeypadsFromPolygon } from '@/lib/utils'
 
 type PendingCreate =
   | null
@@ -140,7 +140,15 @@ export default function App() {
   }, [])
 
   const handleModalCreate = useCallback(
-    ({ callsign, altitude, state }: { callsign: string; altitude: Altitude; state: AirspaceState }) => {
+    ({
+      callsign,
+      altitude,
+      state,
+    }: {
+      callsign: string
+      altitude: Altitude
+      state: AirspaceState
+    }) => {
       const cur = pendingRef.current
       if (!cur) return
       if (cur.kind === 'KEYPAD') {

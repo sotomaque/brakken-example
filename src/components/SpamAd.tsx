@@ -96,7 +96,6 @@ export default memo(function SpamAd() {
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [bannerReturns, setBannerReturns] = useState(0)
 
-
   // Spawn a new popup
   const spawnPopup = useCallback(() => {
     const id = nextId.current++

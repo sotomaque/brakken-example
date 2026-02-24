@@ -9,7 +9,7 @@ import {
   TextField,
 } from '@accelint/design-toolkit'
 import { type CSSProperties, memo, useEffect, useState } from 'react'
-import type { AirspaceState, Altitude } from './types'
+import type { AirspaceState, Altitude } from '@/lib/types'
 
 const S_MODAL_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }
 

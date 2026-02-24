@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@import "@fontsource-variable/roboto-flex";
+@import "@fontsource-variable/roboto-mono";
+@import "@accelint/design-foundation/styles";
+@import "maplibre-gl/dist/maplibre-gl.css";
+@import "../styles.css";
