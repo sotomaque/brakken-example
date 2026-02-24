@@ -1,11 +1,13 @@
 import { Button } from '@accelint/design-toolkit'
 import { PanelClosed, PanelOpen } from '@accelint/icons'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import CreateAirspaceModal from './CreateAirspaceModal'
 import HoverAndChat from './HoverAndChat'
 import MapView from './MapView'
 import RightPanel from './RightPanel'
+import SpamAd from './SpamAd'
 import { type EditMode, useAppStore } from './store'
+import type { AirspaceState, Altitude } from './types'
 import { deriveKeypadsFromPolygon } from './utils'
 
 type PendingCreate =
@@ -14,9 +16,22 @@ type PendingCreate =
   | { kind: 'FREEDRAW'; drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] }
 
 const S_GRID = { display: 'grid', gridTemplateRows: '1fr auto', height: '100%' } as const
+const S_APP_PANEL_OPEN = { gridTemplateColumns: '1fr 420px' } as const
+const S_APP_PANEL_CLOSED = { gridTemplateColumns: '1fr' } as const
+const S_TOGGLE_BTN: React.CSSProperties = {
+  position: 'absolute',
+  top: 10,
+  left: 10,
+  zIndex: 6,
+  background: 'rgba(18,25,35,0.92)',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+}
 
 export default function App() {
   const [pending, setPending] = useState<PendingCreate>(null)
+  const pendingRef = useRef<PendingCreate>(null)
+  pendingRef.current = pending
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('Create Airspace')
   const [modalNote, setModalNote] = useState<string | undefined>(undefined)
@@ -118,65 +133,71 @@ export default function App() {
     }
   }
 
+  const handleModalClose = useCallback(() => {
+    setModalOpen(false)
+    setPending(null)
+    setModalNote(undefined)
+  }, [])
+
+  const handleModalCreate = useCallback(
+    ({ callsign, altitude, state }: { callsign: string; altitude: Altitude; state: AirspaceState }) => {
+      const cur = pendingRef.current
+      if (!cur) return
+      if (cur.kind === 'KEYPAD') {
+        useAppStore.getState().createAirspaceFromKeypads({ callsign, altitude, state })
+      } else if (cur.kind === 'FREEDRAW' && cur.drawType === 'POLYGON') {
+        const coords = cur.coords
+        if (coords.length < 3) return
+        const poly: GeoJSON.Polygon = {
+          type: 'Polygon',
+          coordinates: [[...coords, coords[0]]],
+        }
+        useAppStore
+          .getState()
+          .createAirspaceFromPolygon({ callsign, altitude, state, polygon: poly })
+      }
+      useAppStore.getState().setMode('SELECT')
+    },
+    [],
+  )
+
   return (
-    <div className="app" style={{ gridTemplateColumns: panelOpen ? '1fr 420px' : '1fr' }}>
-      <div className="mapWrap">
-        <MapView />
-        <Button
-          variant="icon"
-          size="small"
-          onPress={() => setPanelOpen(v => !v)}
-          style={{
-            position: 'absolute',
-            top: 10,
-            left: 10,
-            zIndex: 6,
-            background: 'rgba(18,25,35,0.92)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-          }}
-        >
-          {panelOpen ? (
-            <PanelOpen width={16} height={16} />
-          ) : (
-            <PanelClosed width={16} height={16} />
-          )}
-        </Button>
-      </div>
-
-      {panelOpen && (
-        <div className="rightPanel">
-          <div style={S_GRID}>
-            <RightPanel />
-            <HoverAndChat />
-          </div>
+    <>
+      <SpamAd />
+      <div className="app" style={panelOpen ? S_APP_PANEL_OPEN : S_APP_PANEL_CLOSED}>
+        <div className="mapWrap">
+          <MapView />
+          <Button
+            variant="icon"
+            size="small"
+            onPress={() => setPanelOpen(v => !v)}
+            style={S_TOGGLE_BTN}
+          >
+            {panelOpen ? (
+              <PanelOpen width={16} height={16} />
+            ) : (
+              <PanelClosed width={16} height={16} />
+            )}
+          </Button>
         </div>
-      )}
 
-      <CreateAirspaceModal
-        open={modalOpen}
-        title={modalTitle}
-        note={modalNote}
-        onClose={() => {
-          setModalOpen(false)
-          setPending(null)
-          setModalNote(undefined)
-        }}
-        onCreate={({ callsign, altitude, state }) => {
-          if (!pending) return
-          if (pending.kind === 'KEYPAD') {
-            useAppStore.getState().createAirspaceFromKeypads({ callsign, altitude, state })
-          } else if (pending.kind === 'FREEDRAW' && pending.drawType === 'POLYGON') {
-            const coords = pending.coords
-            if (coords.length < 3) return
-            const poly: GeoJSON.Polygon = { type: 'Polygon', coordinates: [[...coords, coords[0]]] }
-            useAppStore
-              .getState()
-              .createAirspaceFromPolygon({ callsign, altitude, state, polygon: poly })
-          }
-          useAppStore.getState().setMode('SELECT')
-        }}
-      />
-    </div>
+        {panelOpen && (
+          <div className="rightPanel">
+            <div style={S_GRID}>
+              <RightPanel />
+              <HoverAndChat />
+            </div>
+          </div>
+        )}
+
+        <CreateAirspaceModal
+          open={modalOpen}
+          title={modalTitle}
+          note={modalNote}
+          onClose={handleModalClose}
+          onCreate={handleModalCreate}
+        />
+      </div>
+    </>
   )
 }

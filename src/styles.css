@@ -39,6 +39,218 @@ body {
   height: 100%;
 }
 
+/* ───── Spam banner ───── */
+.spamBanner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: linear-gradient(90deg, #1a6e1a 0%, #0d9e42 40%, #1a6e1a 100%);
+  border-bottom: 2px solid #2aff5e;
+  box-shadow: 0 2px 20px rgba(42, 255, 94, 0.3);
+  animation: spamBannerPulse 3s ease-in-out infinite;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+@keyframes spamBannerPulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 20px rgba(42, 255, 94, 0.25);
+  }
+  50% {
+    box-shadow: 0 2px 30px rgba(42, 255, 94, 0.5);
+  }
+}
+.spamBannerImg {
+  height: 24px;
+  width: auto;
+  flex-shrink: 0;
+}
+.spamBannerText {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spamBannerCta {
+  flex-shrink: 0;
+  padding: 4px 14px;
+  border-radius: 4px;
+  border: none;
+  background: #fff;
+  color: #0d9e42;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: transform 0.15s;
+}
+.spamBannerCta:hover {
+  transform: scale(1.06);
+}
+.spamBannerClose {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.spamBannerClose:hover {
+  color: #fff;
+}
+
+/* ───── Spam toggle ───── */
+.spamToggle {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  z-index: 10001;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(18, 25, 35, 0.92);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.spamToggle:hover {
+  opacity: 1;
+}
+
+/* ───── Spam popup ───── */
+.spamOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+.spamPopup {
+  position: absolute;
+  width: 340px;
+  background: linear-gradient(135deg, #0f1a2e 0%, #132a1e 50%, #0f1a2e 100%);
+  border: 2px solid #2aff5e;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow:
+    0 0 40px rgba(42, 255, 94, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  animation: spamPopupEntry 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: grab;
+}
+.spamPopup:nth-child(even) {
+  border-color: #ff5e5e;
+  background: linear-gradient(135deg, #1a0f2e 0%, #2a131e 50%, #1a0f2e 100%);
+  box-shadow:
+    0 0 40px rgba(255, 94, 94, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.spamPopup:nth-child(even) .spamPopupCta {
+  background: linear-gradient(135deg, #c03030, #ff5e5e);
+  box-shadow: 0 4px 20px rgba(255, 94, 94, 0.3);
+}
+.spamPopup:nth-child(even) .spamPopupCta:hover {
+  box-shadow: 0 6px 30px rgba(255, 94, 94, 0.5);
+}
+@keyframes spamPopupEntry {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-3deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+.spamShake {
+  animation: spamShakeAnim 0.6s ease-in-out;
+}
+@keyframes spamShakeAnim {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  50%,
+  90% {
+    transform: translateX(-8px);
+  }
+  30%,
+  70% {
+    transform: translateX(8px);
+  }
+}
+.spamPopupClose {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.spamPopupClose:hover {
+  color: #fff;
+}
+.spamPopupImg {
+  width: 200px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+.spamPopupTagline {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+.spamPopupCta {
+  display: inline-block;
+  padding: 10px 28px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #0d9e42, #2aff5e);
+  color: #0a1f0f;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(42, 255, 94, 0.3);
+}
+.spamPopupCta:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 30px rgba(42, 255, 94, 0.5);
+}
+.spamPopupFine {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  margin: 12px 0 0;
+  font-style: italic;
+}
+
 /* ───── App grid layout ───── */
 .app {
   display: grid;

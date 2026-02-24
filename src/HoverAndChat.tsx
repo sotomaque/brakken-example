@@ -1,8 +1,22 @@
 import { Button, Checkbox, TextField } from '@accelint/design-toolkit'
-import { memo, useMemo } from 'react'
+import { type CSSProperties, memo, useMemo } from 'react'
 import { SCENARIO } from './scenario'
 import { useAppStore } from './store'
 import { fmtAlt, parseTimeZ, toHHMMSS } from './utils'
+
+const TIME_REGEX = /^(\d{2}):(\d{2}):(\d{2})$/
+const S_CHAT_HEADER_ROW: CSSProperties = { display: 'flex', gap: 6, alignItems: 'center' }
+const S_ZULU_LABEL: CSSProperties = {
+  color: 'var(--muted)',
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+}
+const S_TIME_INPUT: CSSProperties = {
+  width: 100,
+  fontFamily: "'Roboto Mono Variable', monospace",
+  fontSize: 12,
+}
 
 export default memo(function HoverAndChat() {
   // Granular selectors -- only re-render when these specific slices change
@@ -113,17 +127,8 @@ ${kp}`
       <div className="chat">
         <div className="chatHeader">
           <h3>Scenario Prompts</h3>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span
-              style={{
-                color: 'var(--muted)',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Zulu
-            </span>
+          <div style={S_CHAT_HEADER_ROW}>
+            <span style={S_ZULU_LABEL}>Zulu</span>
             <TextField
               size="small"
               label="Zulu time"
@@ -131,17 +136,13 @@ ${kp}`
               inputProps={{
                 value: toHHMMSS(currentTimeSec),
                 onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                  const m = e.target.value.match(/^(\d{2}):(\d{2}):(\d{2})$/)
+                  const m = e.target.value.match(TIME_REGEX)
                   if (!m) return
                   const sec =
                     parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseInt(m[3], 10)
                   setCurrentTimeSec(sec)
                 },
-                style: {
-                  width: 100,
-                  fontFamily: "'Roboto Mono Variable', monospace",
-                  fontSize: 12,
-                },
+                style: S_TIME_INPUT,
               }}
             />
             <Button

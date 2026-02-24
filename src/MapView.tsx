@@ -694,27 +694,29 @@ export default memo(function MapView() {
     }
   }
 
-  // Apply grid styling
+  // Apply grid styling (Rule 1.3: narrow deps to primitives)
+  const { gridColor, gridOpacity, killboxLineWidth, keypadLineWidth, labelFontSize, labelOpacity } =
+    gridOptions
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
     const safe = (id: string) => map.getLayer(id)
     if (safe('grid-killbox')) {
-      map.setPaintProperty('grid-killbox', 'line-color', gridOptions.gridColor)
-      map.setPaintProperty('grid-killbox', 'line-opacity', gridOptions.gridOpacity)
-      map.setPaintProperty('grid-killbox', 'line-width', gridOptions.killboxLineWidth)
+      map.setPaintProperty('grid-killbox', 'line-color', gridColor)
+      map.setPaintProperty('grid-killbox', 'line-opacity', gridOpacity)
+      map.setPaintProperty('grid-killbox', 'line-width', killboxLineWidth)
     }
     if (safe('grid-keypad')) {
-      map.setPaintProperty('grid-keypad', 'line-color', gridOptions.gridColor)
-      map.setPaintProperty('grid-keypad', 'line-opacity', gridOptions.gridOpacity * 0.8)
-      map.setPaintProperty('grid-keypad', 'line-width', gridOptions.keypadLineWidth)
+      map.setPaintProperty('grid-keypad', 'line-color', gridColor)
+      map.setPaintProperty('grid-keypad', 'line-opacity', gridOpacity * 0.8)
+      map.setPaintProperty('grid-keypad', 'line-width', keypadLineWidth)
     }
     if (safe('grid-labels')) {
-      map.setLayoutProperty('grid-labels', 'text-size', gridOptions.labelFontSize)
-      map.setPaintProperty('grid-labels', 'text-color', gridOptions.gridColor)
-      map.setPaintProperty('grid-labels', 'text-opacity', gridOptions.labelOpacity)
+      map.setLayoutProperty('grid-labels', 'text-size', labelFontSize)
+      map.setPaintProperty('grid-labels', 'text-color', gridColor)
+      map.setPaintProperty('grid-labels', 'text-opacity', labelOpacity)
     }
-  }, [gridOptions])
+  }, [gridColor, gridOpacity, killboxLineWidth, keypadLineWidth, labelFontSize, labelOpacity])
 
   // Update keypad selection highlight
   useEffect(() => {

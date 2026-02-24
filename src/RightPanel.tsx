@@ -18,7 +18,7 @@ import {
   TextField,
 } from '@accelint/design-toolkit'
 import { AlertBase, Delete, Edit, Grid, PolygonTool } from '@accelint/icons'
-import { type CSSProperties, type MouseEvent, memo, useMemo, useState } from 'react'
+import { type CSSProperties, type MouseEvent, memo, useCallback, useMemo, useState } from 'react'
 import type { Key } from 'react-aria-components'
 import { useAppStore } from './store'
 import type { Aircraft, AirspaceReservation } from './types'
@@ -67,6 +67,38 @@ const S_ROW_BODY: CSSProperties = {
 }
 const S_SELECTED_OUTLINE: CSSProperties = { outline: '2px solid #4ba3ff' }
 const S_NO_OUTLINE: CSSProperties = { outline: 'none' }
+const S_TAB_LIST: CSSProperties = {
+  padding: '8px 12px',
+  borderBottom: '1px solid var(--border)',
+  display: 'flex',
+  gap: 8,
+}
+const S_STYLE_LABEL: CSSProperties = {
+  display: 'block',
+  fontSize: 11,
+  color: 'var(--muted)',
+  marginBottom: 4,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+}
+const S_CTX_MENU: CSSProperties = {
+  position: 'fixed',
+  background: 'rgba(15,21,32,0.95)',
+  border: '1px solid var(--border)',
+  borderRadius: 10,
+  padding: 10,
+  zIndex: 60,
+  minWidth: 180,
+  backdropFilter: 'blur(12px)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
+}
+const S_CTX_LABEL: CSSProperties = {
+  fontSize: 11,
+  color: 'var(--muted)',
+  marginBottom: 8,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
 
 const KILLBOX_OPTIONS = [
   '23AF',
@@ -283,16 +315,7 @@ const AirspaceRow = memo(function AirspaceRow({
           />
 
           <div style={S_SPAN2}>
-            <span
-              style={{
-                display: 'block',
-                fontSize: 11,
-                color: 'var(--muted)',
-                marginBottom: 4,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
+            <span style={S_STYLE_LABEL}>
               Style & Color
             </span>
             <div style={S_STYLE_BOX}>
@@ -435,6 +458,11 @@ export default memo(function RightPanel() {
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set())
   const [ctx, setCtx] = useState<{ x: number; y: number; airspaceId: string } | null>(null)
 
+  const aircraftByCallsign = useMemo(
+    () => new Map(aircraft.map(a => [a.callsign, a])),
+    [aircraft],
+  )
+
   const conflictSet = useMemo(() => {
     const map = new Map<string, ConflictInfo>()
     for (const c of conflicts) {
@@ -478,8 +506,10 @@ export default memo(function RightPanel() {
         ? `K:${scope.killbox}`
         : `R:${scope.areaId}`
 
-  const handleRowCtx = (e: MouseEvent, id: string) =>
-    setCtx({ x: e.clientX, y: e.clientY, airspaceId: id })
+  const handleRowCtx = useCallback(
+    (e: MouseEvent, id: string) => setCtx({ x: e.clientX, y: e.clientY, airspaceId: id }),
+    [],
+  )
 
   return (
     <div className="rightPanel" onClick={() => ctx && setCtx(null)}>
@@ -511,14 +541,7 @@ export default memo(function RightPanel() {
           selectedKey={activeTab}
           onSelectionChange={key => setActiveTab(key as 'ACTIVE' | 'PLANNED' | 'ARCHIVED')}
         >
-          <TabList
-            style={{
-              padding: '8px 12px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              gap: 8,
-            }}
-          >
+          <TabList style={S_TAB_LIST}>
             <Tab id="ACTIVE">Active</Tab>
             <Tab id="PLANNED">Planned</Tab>
             <Tab id="ARCHIVED">Archived</Tab>
@@ -584,7 +607,7 @@ export default memo(function RightPanel() {
                 a={a}
                 conflict={conflictSet.get(a.id)}
                 isSelected={selectedId.kind === 'AIRSPACE' && selectedId.id === a.id}
-                owner={aircraft.find(x => x.callsign === a.ownerCallsign)}
+                owner={aircraftByCallsign.get(a.ownerCallsign)}
                 activeTab={activeTab}
                 allAircraft={aircraft}
                 onContextMenu={handleRowCtx}
@@ -596,30 +619,10 @@ export default memo(function RightPanel() {
 
       {ctx && (
         <div
-          style={{
-            position: 'fixed',
-            left: ctx.x,
-            top: ctx.y,
-            background: 'rgba(15,21,32,0.95)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: 10,
-            zIndex: 60,
-            minWidth: 180,
-            backdropFilter: 'blur(12px)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
-          }}
+          style={{ ...S_CTX_MENU, left: ctx.x, top: ctx.y }}
           onMouseDown={e => e.stopPropagation()}
         >
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--muted)',
-              marginBottom: 8,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
+          <div style={S_CTX_LABEL}>
             Row actions
           </div>
           <Button

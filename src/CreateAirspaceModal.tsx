@@ -8,8 +8,10 @@ import {
   SelectField,
   TextField,
 } from '@accelint/design-toolkit'
-import { memo, useState } from 'react'
+import { type CSSProperties, memo, useEffect, useState } from 'react'
 import type { AirspaceState, Altitude } from './types'
+
+const S_MODAL_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }
 
 type Props = {
   open: boolean
@@ -35,6 +37,18 @@ export default memo(function CreateAirspaceModal({
   const [minFt, setMinFt] = useState(0)
   const [maxFt, setMaxFt] = useState(22000)
 
+  // Reset form state when modal opens (fix 1.8: state persists since component stays mounted)
+  useEffect(() => {
+    if (open) {
+      setCallsign(defaultCallsign ?? '')
+      setState('PLANNED')
+      setAltMode('SINGLE')
+      setSingleFt(3000)
+      setMinFt(0)
+      setMaxFt(22000)
+    }
+  }, [open, defaultCallsign])
+
   // Compute inline instead of useMemo -- trivial conditional (fix 5d)
   const altitude: Altitude =
     altMode === 'SINGLE'
@@ -59,7 +73,7 @@ export default memo(function CreateAirspaceModal({
                 {note}
               </p>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={S_MODAL_GRID}>
               <TextField
                 label="Callsign / Name"
                 inputProps={{
