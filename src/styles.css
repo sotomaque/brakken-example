@@ -22,27 +22,51 @@
     display: flex;
   }
 
-  .group\/drawer:where([data-size="large"]):where([data-placement~="right"], [data-placement~="left"]) > div {
+  .group\/drawer:where([data-size="large"]):where(
+      [data-placement~="right"],
+      [data-placement~="left"]
+    )
+    > div {
     width: var(--drawer-size-large);
   }
 
-  .group\/drawer:where([data-size="medium"]):where([data-placement~="right"], [data-placement~="left"]) > div {
+  .group\/drawer:where([data-size="medium"]):where(
+      [data-placement~="right"],
+      [data-placement~="left"]
+    )
+    > div {
     width: var(--drawer-size-medium);
   }
 
-  .group\/drawer:where([data-size="small"]):where([data-placement~="right"], [data-placement~="left"]) > div {
+  .group\/drawer:where([data-size="small"]):where(
+      [data-placement~="right"],
+      [data-placement~="left"]
+    )
+    > div {
     width: var(--drawer-size-small);
   }
 
-  .group\/drawer:where([data-size="large"]):where([data-placement~="top"], [data-placement~="bottom"]) > div {
+  .group\/drawer:where([data-size="large"]):where(
+      [data-placement~="top"],
+      [data-placement~="bottom"]
+    )
+    > div {
     height: var(--drawer-size-large);
   }
 
-  .group\/drawer:where([data-size="medium"]):where([data-placement~="top"], [data-placement~="bottom"]) > div {
+  .group\/drawer:where([data-size="medium"]):where(
+      [data-placement~="top"],
+      [data-placement~="bottom"]
+    )
+    > div {
     height: var(--drawer-size-medium);
   }
 
-  .group\/drawer:where([data-size="small"]):where([data-placement~="top"], [data-placement~="bottom"]) > div {
+  .group\/drawer:where([data-size="small"]):where(
+      [data-placement~="top"],
+      [data-placement~="bottom"]
+    )
+    > div {
     height: var(--drawer-size-small);
   }
 }
