@@ -157,7 +157,7 @@ describe('duplicateAirspace', () => {
     const dup = st.airspaces.find(a => a.id !== id)!
     expect(dup.ownerCallsign).toBe('HAWK01-duplicate')
     expect(dup.state).toBe('PLANNED')
-    expect(dup.keypads).toEqual(st.airspaces.find(a => a.id === id)!.keypads)
+    expect(dup.keypads).toEqual(st.airspaces.find(a => a.id === id)?.keypads)
   })
 })
 
@@ -222,7 +222,7 @@ describe('startEditSelected', () => {
 
     const st = useAppStore.getState()
     expect(st.editMode).not.toBeNull()
-    expect(st.editMode!.kind).toBe('REDRAW_GEOMETRY')
+    expect(st.editMode?.kind).toBe('REDRAW_GEOMETRY')
     expect(st.mode).toBe('FREEDRAW')
   })
 })

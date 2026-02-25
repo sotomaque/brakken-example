@@ -3,7 +3,7 @@ import type { Map as MLMap } from 'maplibre-gl'
 import { type MutableRefObject, useCallback, useRef } from 'react'
 import { useAppStore } from '@/store'
 
-export function useMapDrawing(mapRef: MutableRefObject<MLMap | null>) {
+export function useMapDrawing(_mapRef: MutableRefObject<MLMap | null>) {
   const drawStateRef = useRef<{ active: boolean; coords: [number, number][] }>({
     active: false,
     coords: [],

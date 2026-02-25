@@ -431,8 +431,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (overlap.length === 0) continue
 
         // Track geographic overlap for picasso mode (altitude-independent)
-        adjacency.get(A.id)!.add(B.id)
-        adjacency.get(B.id)!.add(A.id)
+        adjacency.get(A.id)?.add(B.id)
+        adjacency.get(B.id)?.add(A.id)
 
         if (!altitudeConflicts(A.altitude, B.altitude)) continue
 

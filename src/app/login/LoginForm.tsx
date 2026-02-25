@@ -44,7 +44,6 @@ export default function LoginForm() {
         value={password}
         onChange={e => setPassword(e.target.value)}
         placeholder="Password"
-        autoFocus
         required
         className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-blue-500 focus:outline-none"
       />

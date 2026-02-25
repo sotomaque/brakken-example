@@ -11,7 +11,7 @@ export type RefPoint = {
 
 function must(s: string) {
   const v = parseLatLon(s)
-  if (!v) throw new Error('bad latlon ' + s)
+  if (!v) throw new Error(`bad latlon ${s}`)
   return v
 }
 

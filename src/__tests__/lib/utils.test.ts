@@ -10,7 +10,6 @@ import {
   deriveKeypadsFromPoint,
   deriveKeypadsFromPolygon,
   fmtAlt,
-  fracToLatLon,
   KILLBOX_COLS,
   KILLBOX_ROWS,
   keypadFromLatLon,
@@ -62,14 +61,14 @@ describe('parseLatLon', () => {
   test('parses N/E coordinate', () => {
     const result = parseLatLon('N00:33.00 E121:33.00')
     expect(result).not.toBeNull()
-    expect(result!.lat).toBeCloseTo(0 + 33 / 60, 6)
-    expect(result!.lon).toBeCloseTo(121 + 33 / 60, 6)
+    expect(result?.lat).toBeCloseTo(0 + 33 / 60, 6)
+    expect(result?.lon).toBeCloseTo(121 + 33 / 60, 6)
   })
   test('parses S/W coordinate', () => {
     const result = parseLatLon('S00:12.00 W001:08.00')
     expect(result).not.toBeNull()
-    expect(result!.lat).toBeCloseTo(-(0 + 12 / 60), 6)
-    expect(result!.lon).toBeCloseTo(-(1 + 8 / 60), 6)
+    expect(result?.lat).toBeCloseTo(-(0 + 12 / 60), 6)
+    expect(result?.lon).toBeCloseTo(-(1 + 8 / 60), 6)
   })
   test('returns null for invalid input', () => {
     expect(parseLatLon('invalid')).toBeNull()
@@ -78,8 +77,8 @@ describe('parseLatLon', () => {
   test('trims whitespace', () => {
     const result = parseLatLon('  N01:00.00 E122:00.00  ')
     expect(result).not.toBeNull()
-    expect(result!.lat).toBeCloseTo(1, 4)
-    expect(result!.lon).toBeCloseTo(122, 4)
+    expect(result?.lat).toBeCloseTo(1, 4)
+    expect(result?.lon).toBeCloseTo(122, 4)
   })
 })
 
@@ -99,7 +98,7 @@ describe('toHHMMSS / parseTimeZ', () => {
   })
   test('roundtrips correctly', () => {
     const seconds = 13 * 3600 + 5 * 60 + 30
-    const formatted = toHHMMSS(seconds) + 'Z'
+    const formatted = `${toHHMMSS(seconds)}Z`
     expect(parseTimeZ(formatted)).toBe(seconds)
   })
 })
@@ -170,8 +169,8 @@ describe('killboxFromLatLon', () => {
     }
     const kb = killboxFromLatLon(center)
     expect(kb).not.toBeNull()
-    expect(KILLBOX_ROWS).toContain(kb!.slice(0, 2))
-    expect(KILLBOX_COLS).toContain(kb!.slice(2, 4))
+    expect(KILLBOX_ROWS).toContain(kb?.slice(0, 2))
+    expect(KILLBOX_COLS).toContain(kb?.slice(2, 4))
   })
 })
 
@@ -181,7 +180,7 @@ describe('keypadFromLatLon', () => {
     const p = { lat: AOR.nw.lat - 0.01, lon: AOR.nw.lon + 0.01 }
     const kp = keypadFromLatLon(p)
     expect(kp).not.toBeNull()
-    expect(kp!.startsWith('23AF')).toBe(true)
+    expect(kp?.startsWith('23AF')).toBe(true)
   })
   test('keypad IDs are 5 characters', () => {
     const center = {
@@ -190,7 +189,7 @@ describe('keypadFromLatLon', () => {
     }
     const kp = keypadFromLatLon(center)
     expect(kp).not.toBeNull()
-    expect(kp!.length).toBe(5)
+    expect(kp?.length).toBe(5)
   })
   test('last char is digit 1-9', () => {
     const center = {
@@ -209,8 +208,8 @@ describe('keypadPolygon', () => {
   test('returns polygon for valid keypad', () => {
     const poly = keypadPolygon('23AF5')
     expect(poly).not.toBeNull()
-    expect(poly!.type).toBe('Polygon')
-    expect(poly!.coordinates[0]).toHaveLength(5) // closed ring
+    expect(poly?.type).toBe('Polygon')
+    expect(poly?.coordinates[0]).toHaveLength(5) // closed ring
   })
   test('returns null for invalid keypad', () => {
     expect(keypadPolygon('invalid')).toBeNull()

@@ -28,7 +28,7 @@ export function clamp(n: number, a: number, b: number) {
 }
 
 export function uid(prefix = 'id') {
-  return prefix + '_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16)
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`
 }
 
 export function parseLatLon(s: string): LatLon | null {

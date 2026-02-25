@@ -21,9 +21,9 @@ const PICASSO_UNIT_OFFSETS: [number, number][] = [
   [-1, 0],
   [0, 1],
   [0, -1],
-  [0.707, 0.707],
-  [-0.707, 0.707],
-  [0.707, -0.707],
+  [Math.SQRT1_2, Math.SQRT1_2],
+  [-Math.SQRT1_2, Math.SQRT1_2],
+  [Math.SQRT1_2, -Math.SQRT1_2],
 ]
 const PICASSO_SLOT_COUNT = PICASSO_UNIT_OFFSETS.length
 const PICASSO_STATES = ['ACTIVE', 'PLANNED', 'COLD'] as const
@@ -93,7 +93,6 @@ export function useMapInstance(
 
     mapRef.current = map
     map.on('error', e => {
-      // @ts-expect-error
       console.error('MapLibre error:', e?.error || e)
     })
 
@@ -417,7 +416,16 @@ export function useMapInstance(
       if (containerRef.current) containerRef.current.innerHTML = ''
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [
+    airspacesGeo,
+    containerRef.current,
+    gridLabels,
+    gridLines,
+    handleMapClick,
+    keypadsGeo,
+    refsGeo,
+    shapesGeo,
+  ])
 
   // Update sources when data changes
   useEffect(() => {

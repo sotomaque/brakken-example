@@ -92,8 +92,8 @@ export function useMapKeyboard(
     const cleanups = managers.map(m => m.bind())
 
     return () => {
-      cleanups.forEach(c => c())
-      managers.forEach(m => unregisterHotkey(m))
+      for (const c of cleanups) c()
+      for (const m of managers) unregisterHotkey(m)
       globalUnbind()
     }
   }, [mapRef, drawStateRef, updateScratch])

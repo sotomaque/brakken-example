@@ -47,7 +47,7 @@ const QUICK_COLORS = [
 // Hoisted style constants for hot-path rendering
 const S_FLEX_ROW: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center' }
 const S_FLEX_ROW_10: CSSProperties = { display: 'flex', gap: 10, alignItems: 'center' }
-const S_FLEX_GAP8: CSSProperties = { display: 'flex', gap: 8 }
+const _S_FLEX_GAP8: CSSProperties = { display: 'flex', gap: 8 }
 const S_HEADER_BUTTONS: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',

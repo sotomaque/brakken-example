@@ -12,12 +12,12 @@ export function parseAltitudeString(val: string): Altitude | null {
     const [minStr, maxStr] = cleanVal.split('-')
     const minFt = parseInt(minStr, 10)
     const maxFt = parseInt(maxStr, 10)
-    if (!isNaN(minFt) && !isNaN(maxFt)) {
+    if (!Number.isNaN(minFt) && !Number.isNaN(maxFt)) {
       return { kind: 'BLOCK', minFt, maxFt }
     }
   } else {
     const singleFt = parseInt(cleanVal, 10)
-    if (!isNaN(singleFt)) {
+    if (!Number.isNaN(singleFt)) {
       return { kind: 'SINGLE', singleFt }
     }
   }

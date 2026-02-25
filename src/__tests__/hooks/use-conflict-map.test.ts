@@ -14,10 +14,10 @@ describe('buildConflictMap', () => {
     ]
     const result = buildConflictMap(conflicts)
     expect(result.size).toBe(2)
-    expect(result.get('a1')!.count).toBe(1)
-    expect(result.get('a1')!.others).toEqual(['a2'])
-    expect(result.get('a1')!.overlap).toEqual(['23AF5'])
-    expect(result.get('a2')!.others).toEqual(['a1'])
+    expect(result.get('a1')?.count).toBe(1)
+    expect(result.get('a1')?.others).toEqual(['a2'])
+    expect(result.get('a1')?.overlap).toEqual(['23AF5'])
+    expect(result.get('a2')?.others).toEqual(['a1'])
   })
 
   test('multiple conflicts accumulate', () => {
