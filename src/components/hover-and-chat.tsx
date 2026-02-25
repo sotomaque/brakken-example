@@ -19,6 +19,8 @@ const S_TIME_INPUT: CSSProperties = {
   fontSize: 12,
 }
 
+const SORTED_EVENTS = [...SCENARIO.events].sort((a, b) => parseTimeZ(a.timeZ) - parseTimeZ(b.timeZ))
+
 export default memo(function HoverAndChat() {
   // Granular selectors -- only re-render when these specific slices change
   const hover = useAppStore(s => s.hover)
@@ -32,13 +34,9 @@ export default memo(function HoverAndChat() {
   const setCurrentTimeSec = useAppStore(s => s.setCurrentTimeSec)
   const toggleHandled = useAppStore(s => s.toggleHandled)
 
-  const events = useMemo(() => {
-    return [...SCENARIO.events].sort((a, b) => parseTimeZ(a.timeZ) - parseTimeZ(b.timeZ))
-  }, [])
-
   const visibleEvents = useMemo(
-    () => events.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec),
-    [events, currentTimeSec],
+    () => SORTED_EVENTS.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec),
+    [currentTimeSec],
   )
 
   const hoverText = useHoverText(hover, airspaces, shapes, scope)

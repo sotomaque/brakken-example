@@ -221,7 +221,6 @@ describe('startEditSelected', () => {
     useAppStore.getState().startEditSelected()
 
     const st = useAppStore.getState()
-    expect(st.editMode).not.toBeNull()
     expect(st.editMode?.kind).toBe('REDRAW_GEOMETRY')
     expect(st.mode).toBe('FREEDRAW')
   })

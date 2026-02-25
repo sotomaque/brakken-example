@@ -115,45 +115,59 @@ describe('fmtAlt', () => {
 
 // ─── altitudeConflicts ────────────────────────────────────────────────
 describe('altitudeConflicts', () => {
-  test('single vs single: same altitude conflicts', () => {
-    const a: Altitude = { kind: 'SINGLE', singleFt: 5000 }
-    const b: Altitude = { kind: 'SINGLE', singleFt: 5000 }
-    expect(altitudeConflicts(a, b)).toBe(true)
-  })
-  test('single vs single: 999ft apart conflicts', () => {
-    const a: Altitude = { kind: 'SINGLE', singleFt: 5000 }
-    const b: Altitude = { kind: 'SINGLE', singleFt: 5999 }
-    expect(altitudeConflicts(a, b)).toBe(true)
-  })
-  test('single vs single: 1000ft apart does NOT conflict', () => {
-    const a: Altitude = { kind: 'SINGLE', singleFt: 5000 }
-    const b: Altitude = { kind: 'SINGLE', singleFt: 6000 }
-    expect(altitudeConflicts(a, b)).toBe(false)
-  })
-  test('block vs block: overlapping conflicts', () => {
-    const a: Altitude = { kind: 'BLOCK', minFt: 3000, maxFt: 7000 }
-    const b: Altitude = { kind: 'BLOCK', minFt: 5000, maxFt: 9000 }
-    expect(altitudeConflicts(a, b)).toBe(true)
-  })
-  test('block vs block: non-overlapping does NOT conflict', () => {
-    const a: Altitude = { kind: 'BLOCK', minFt: 3000, maxFt: 5000 }
-    const b: Altitude = { kind: 'BLOCK', minFt: 5001, maxFt: 9000 }
-    expect(altitudeConflicts(a, b)).toBe(false)
-  })
-  test('single vs block: inside block conflicts', () => {
-    const a: Altitude = { kind: 'SINGLE', singleFt: 5000 }
-    const b: Altitude = { kind: 'BLOCK', minFt: 3000, maxFt: 7000 }
-    expect(altitudeConflicts(a, b)).toBe(true)
-  })
-  test('single vs block: outside block does NOT conflict', () => {
-    const a: Altitude = { kind: 'SINGLE', singleFt: 2000 }
-    const b: Altitude = { kind: 'BLOCK', minFt: 3000, maxFt: 7000 }
-    expect(altitudeConflicts(a, b)).toBe(false)
-  })
-  test('block vs block: sharing exact boundary conflicts', () => {
-    const a: Altitude = { kind: 'BLOCK', minFt: 3000, maxFt: 5000 }
-    const b: Altitude = { kind: 'BLOCK', minFt: 5000, maxFt: 9000 }
-    expect(altitudeConflicts(a, b)).toBe(true)
+  const cases: [string, Altitude, Altitude, boolean][] = [
+    [
+      'single vs single: same altitude',
+      { kind: 'SINGLE', singleFt: 5000 },
+      { kind: 'SINGLE', singleFt: 5000 },
+      true,
+    ],
+    [
+      'single vs single: 999ft apart',
+      { kind: 'SINGLE', singleFt: 5000 },
+      { kind: 'SINGLE', singleFt: 5999 },
+      true,
+    ],
+    [
+      'single vs single: 1000ft apart',
+      { kind: 'SINGLE', singleFt: 5000 },
+      { kind: 'SINGLE', singleFt: 6000 },
+      false,
+    ],
+    [
+      'block vs block: overlapping',
+      { kind: 'BLOCK', minFt: 3000, maxFt: 7000 },
+      { kind: 'BLOCK', minFt: 5000, maxFt: 9000 },
+      true,
+    ],
+    [
+      'block vs block: non-overlapping',
+      { kind: 'BLOCK', minFt: 3000, maxFt: 5000 },
+      { kind: 'BLOCK', minFt: 5001, maxFt: 9000 },
+      false,
+    ],
+    [
+      'single vs block: inside block',
+      { kind: 'SINGLE', singleFt: 5000 },
+      { kind: 'BLOCK', minFt: 3000, maxFt: 7000 },
+      true,
+    ],
+    [
+      'single vs block: outside block',
+      { kind: 'SINGLE', singleFt: 2000 },
+      { kind: 'BLOCK', minFt: 3000, maxFt: 7000 },
+      false,
+    ],
+    [
+      'block vs block: sharing exact boundary',
+      { kind: 'BLOCK', minFt: 3000, maxFt: 5000 },
+      { kind: 'BLOCK', minFt: 5000, maxFt: 9000 },
+      true,
+    ],
+  ]
+
+  test.each(cases)('%s → %s', (_, a, b, expected) => {
+    expect(altitudeConflicts(a, b)).toBe(expected)
   })
 })
 

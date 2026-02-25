@@ -9,16 +9,19 @@ export function buildConflictMap(conflicts: Conflict[]): Map<string, ConflictInf
 
   for (const c of conflicts) {
     const add = (id: string, otherId: string) => {
-      const prev = map.get(id) || { count: 0, others: [], overlap: [] }
-      prev.count += 1
-      prev.others.push(otherId)
+      let info = map.get(id)
+      if (!info) {
+        info = { count: 0, others: [], overlap: [] }
+        map.set(id, info)
+      }
+      info.count += 1
+      info.others.push(otherId)
       let s = overlapSets.get(id)
       if (!s) {
         s = new Set()
         overlapSets.set(id, s)
       }
       for (const kp of c.overlappingKeypads) s.add(kp)
-      map.set(id, prev)
     }
     add(c.aId, c.bId)
     add(c.bId, c.aId)

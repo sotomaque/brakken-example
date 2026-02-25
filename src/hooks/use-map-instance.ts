@@ -212,7 +212,7 @@ export function useMapInstance(
       })
 
       // Master color logic
-      const airspaceColorLogic: any = [
+      const airspaceColorLogic: maplibregl.ExpressionSpecification = [
         'coalesce',
         ['get', 'color'],
         [

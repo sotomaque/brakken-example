@@ -469,11 +469,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         continue
       }
 
-      // BFS connected component
+      // BFS connected component (bounded by node count as safety guard)
       const component: string[] = []
       const queue: string[] = [a.id]
       visited.add(a.id)
-      while (queue.length > 0) {
+      const maxIter = relevant.length
+      let steps = 0
+      while (queue.length > 0 && steps < maxIter) {
+        steps++
         const current = queue.shift()!
         component.push(current)
         for (const neighbor of adjacency.get(current)!) {

@@ -11,7 +11,7 @@ export function useMapDrawing(_mapRef: MutableRefObject<MLMap | null>) {
 
   const updateScratch = useCallback((map: MLMap) => {
     const ds = drawStateRef.current
-    const feats: any[] = []
+    const feats: GeoJSON.Feature[] = []
     for (const c of ds.coords) {
       feats.push({
         type: 'Feature',
@@ -38,7 +38,7 @@ export function useMapDrawing(_mapRef: MutableRefObject<MLMap | null>) {
     }
     const src = map.getSource('scratch') as maplibregl.GeoJSONSource | undefined
     if (!src) return
-    src.setData({ type: 'FeatureCollection', features: feats } as any)
+    src.setData({ type: 'FeatureCollection', features: feats })
   }, [])
 
   const handleMapClick = useCallback(

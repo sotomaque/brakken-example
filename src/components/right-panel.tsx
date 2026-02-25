@@ -465,7 +465,7 @@ export default memo(function RightPanel() {
 
   const visibleAirspaces = useVisibleAirspaces(airspaces, activeTab, scope, shapes)
 
-  const namedAreas = useMemo(() => shapes.filter(s => s.tags.includes('ROZ')), [shapes])
+  const namedAreas = shapes.filter(s => s.tags.includes('ROZ'))
 
   const scopeKey =
     scope.kind === 'AOR'
