@@ -18,10 +18,10 @@ import maplibregl, { Map as MLMap } from 'maplibre-gl'
 import { type CSSProperties, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { gridLinesGeoJSON, keypadPolygonsGeoJSON, killboxLabelsGeoJSON } from '@/lib/grid'
 import { REF_POINTS } from '@/lib/referencePoints'
-import type { HoverInfo } from '@/store'
-import { useAppStore } from '@/store'
 import type { AirspaceReservation } from '@/lib/types'
 import { AOR, fmtAlt } from '@/lib/utils'
+import type { HoverInfo } from '@/store'
+import { useAppStore } from '@/store'
 
 const GRID_LINES_SOURCE = 'grid-lines'
 const GRID_LABELS_SOURCE = 'grid-labels'
@@ -891,7 +891,7 @@ export default memo(function MapView() {
             Mode: <b>{mode}</b> {mode === 'FREEDRAW' ? `(${drawType})` : ''}
           </div>
 
-          {!shortcutsMinimized && SHORTCUTS_JSX}
+          {!shortcutsMinimized ? SHORTCUTS_JSX : null}
         </div>
 
         {/* GRID & LAYERS (collapsible) */}

@@ -384,10 +384,17 @@ export function polygonFromKeypads(keypads: string[]): GeoJSON.Polygon {
       ],
     }
   }
-  const minX = Math.min(...boxes.map(b => b.minX))
-  const minY = Math.min(...boxes.map(b => b.minY))
-  const maxX = Math.max(...boxes.map(b => b.maxX))
-  const maxY = Math.max(...boxes.map(b => b.maxY))
+  // Single pass for bounding box (rule 7.6: combine iterations)
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity
+  for (const b of boxes) {
+    if (b.minX < minX) minX = b.minX
+    if (b.minY < minY) minY = b.minY
+    if (b.maxX > maxX) maxX = b.maxX
+    if (b.maxY > maxY) maxY = b.maxY
+  }
   return {
     type: 'Polygon',
     coordinates: [

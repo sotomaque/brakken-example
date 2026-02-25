@@ -128,29 +128,34 @@
     --outline-value: var(--outline-accent-primary-bold);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover) > span:first-child::before {
+  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover)
+    > span:first-child::before {
     background-color: var(--fg-accent-primary-hover);
   }
 
   /* Control — selected + focus-visible */
-  .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible) > span:first-child {
+  .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible)
+  > span:first-child {
     --bg-value: var(--bg-accent-primary-muted);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-interactive-hover);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible) > span:first-child::before {
+  .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible)
+    > span:first-child::before {
     background-color: var(--fg-accent-primary-hover);
   }
 
   /* Control — selected + pressed */
-  .group\/switch:where([data-selected], :checked):where([data-pressed], :active) > span:first-child {
+  .group\/switch:where([data-selected], :checked):where([data-pressed], :active)
+  > span:first-child {
     --bg-value: var(--bg-accent-primary-pressed);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-accent-primary-pressed);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-selected], :checked):where([data-pressed], :active) > span:first-child::before {
+  .group\/switch:where([data-selected], :checked):where([data-pressed], :active)
+    > span:first-child::before {
     background-color: var(--fg-accent-primary-pressed);
   }
 
@@ -165,7 +170,8 @@
   }
 
   /* Control — disabled + selected */
-  .group\/switch:where([disabled], [data-disabled], :disabled):where([data-selected], :checked) > span:first-child {
+  .group\/switch:where([disabled], [data-disabled], :disabled):where([data-selected], :checked)
+  > span:first-child {
     --bg-value: var(--bg-interactive-disabled);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
   }
@@ -196,7 +202,8 @@
   }
 
   /* Track — horizontal + grid placement */
-  .group\/slider:where([data-orientation="horizontal"]):where([data-layout="grid"]) :has(> [role="slider"]) {
+  .group\/slider:where([data-orientation="horizontal"]):where([data-layout="grid"])
+  :has(> [role="slider"]) {
     grid-column: span 3 / span 3;
     grid-row-start: 2;
   }
@@ -211,7 +218,8 @@
   }
 
   /* Track value (filled portion) — horizontal */
-  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"]) > :has(+ [role="slider"]) {
+  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"])
+    > :has(+ [role="slider"]) {
     height: var(--spacing-xxs, 2px);
     top: 50%;
     --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);

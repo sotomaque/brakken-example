@@ -1,3 +1,4 @@
+import { uuid } from '@accelint/core'
 import {
   Button,
   Drawer,
@@ -8,18 +9,17 @@ import {
   DrawerTrigger,
   DrawerView,
 } from '@accelint/design-toolkit'
-import { uuid } from '@accelint/core'
 import { PanelClosed, PanelOpen } from '@accelint/icons'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import CreateAirspaceModal from './CreateAirspaceModal'
-import HoverAndChat from './HoverAndChat'
-import MapView from './MapView'
-import RightPanel from './RightPanel'
-import { type EditMode, useAppStore } from '@/store'
 import type { AirspaceState, Altitude } from '@/lib/types'
 import { deriveKeypadsFromPolygon } from '@/lib/utils'
+import { type EditMode, useAppStore } from '@/store'
+import CreateAirspaceModal from './CreateAirspaceModal'
+import HoverAndChat from './HoverAndChat'
+import RightPanel from './RightPanel'
 
+const MapView = dynamic(() => import('./MapView'), { ssr: false })
 const SpamAd = dynamic(() => import('./SpamAd'), { ssr: false })
 
 type PendingCreate =
@@ -106,7 +106,7 @@ export default function App() {
 
         setPending({ kind: 'KEYPAD' })
         setModalTitle('Create Airspace (from keypads)')
-        setModalNote(`Selected keypads: ${keypads.slice().sort().join(' ')}`)
+        setModalNote(`Selected keypads: ${keypads.toSorted().join(' ')}`)
         setModalOpen(true)
       }
     })
@@ -126,7 +126,7 @@ export default function App() {
         type: 'Polygon',
         coordinates: [[...detail.coords, detail.coords[0]]],
       }
-      const keypads = deriveKeypadsFromPolygon(poly).sort()
+      const keypads = deriveKeypadsFromPolygon(poly).toSorted()
       st.updateAirspace(em.targetId, { geometry: poly, keypads, kind: 'FREEDRAW' })
     } else {
       const src = st.shapes.find(s => s.id === em.targetId)

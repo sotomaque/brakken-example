@@ -1,0 +1,27 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "accelint",
+    "airspace",
+    "airspaces",
+    "callsign",
+    "callsigns",
+    "freedraw",
+    "keypads",
+    "keypad",
+    "killbox",
+    "killboxes",
+    "maplibre",
+    "marsa",
+    "picasso",
+    "unsub",
+    "upsert"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    ".next",
+    "dist",
+    "bun.lock"
+  ]
+}

@@ -28,9 +28,9 @@ import {
   useTransition,
 } from 'react'
 import type { Key } from 'react-aria-components'
-import { useAppStore } from '@/store'
 import type { Aircraft, AirspaceReservation } from '@/lib/types'
 import { fmtAlt } from '@/lib/utils'
+import { useAppStore } from '@/store'
 
 const QUICK_COLORS = [
   { label: 'Green', hex: '#3cff9e' },

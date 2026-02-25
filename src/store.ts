@@ -238,7 +238,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   cancelEdit: () => set({ editMode: null, mode: 'SELECT' }),
 
   createAirspaceFromKeypads: ({ callsign, altitude, state, displayText }) => {
-    const keypads = get().selectedKeypads.slice().sort()
+    const keypads = get().selectedKeypads.toSorted()
     const geometry = polygonFromKeypads(keypads)
     const id = uid('as')
     const a: AirspaceReservation = {
@@ -262,7 +262,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   createAirspaceFromPolygon: ({ callsign, altitude, state, polygon, displayText }) => {
-    const keypads = deriveKeypadsFromPolygon(polygon).sort()
+    const keypads = deriveKeypadsFromPolygon(polygon).toSorted()
     const id = uid('as')
     const a: AirspaceReservation = {
       id,
