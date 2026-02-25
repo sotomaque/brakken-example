@@ -125,7 +125,8 @@
   }
 
   /* Control — selected + hover */
-  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover) > span:nth-child(2) {
+  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover)
+  > span:nth-child(2) {
     --bg-value: var(--bg-accent-primary-muted);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-accent-primary-bold);
@@ -206,7 +207,7 @@
 
   /* Track — horizontal + grid placement */
   .group\/slider:where([data-orientation="horizontal"]):where([data-layout="grid"])
-    > div[data-orientation] {
+  > div[data-orientation] {
     grid-column: span 3 / span 3;
     grid-row-start: 2;
   }

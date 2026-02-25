@@ -176,9 +176,7 @@ const MapToolsPanel = memo(function MapToolsPanel({
               maxValue={1}
               step={0.01}
               value={gridOptions.gridOpacity}
-              onChange={v =>
-                useAppStore.getState().setGridOptions({ gridOpacity: v as number })
-              }
+              onChange={v => useAppStore.getState().setGridOptions({ gridOpacity: v as number })}
               showValueLabels={false}
               layout="grid"
             />
@@ -229,9 +227,7 @@ const MapToolsPanel = memo(function MapToolsPanel({
               maxValue={22}
               step={1}
               value={gridOptions.labelFontSize}
-              onChange={v =>
-                useAppStore.getState().setGridOptions({ labelFontSize: v as number })
-              }
+              onChange={v => useAppStore.getState().setGridOptions({ labelFontSize: v as number })}
               showValueLabels={false}
               layout="grid"
             />
@@ -241,9 +237,7 @@ const MapToolsPanel = memo(function MapToolsPanel({
               maxValue={1}
               step={0.01}
               value={gridOptions.labelOpacity}
-              onChange={v =>
-                useAppStore.getState().setGridOptions({ labelOpacity: v as number })
-              }
+              onChange={v => useAppStore.getState().setGridOptions({ labelOpacity: v as number })}
               showValueLabels={false}
               layout="grid"
             />
