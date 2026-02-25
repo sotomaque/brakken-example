@@ -1,7 +1,17 @@
-import { Button } from '@accelint/design-toolkit'
+import {
+  Button,
+  Drawer,
+  DrawerContent,
+  DrawerLayout,
+  DrawerLayoutMain,
+  DrawerPanel,
+  DrawerTrigger,
+  DrawerView,
+} from '@accelint/design-toolkit'
+import { uuid } from '@accelint/core'
 import { PanelClosed, PanelOpen } from '@accelint/icons'
 import dynamic from 'next/dynamic'
-import { Activity, useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import CreateAirspaceModal from './CreateAirspaceModal'
 import HoverAndChat from './HoverAndChat'
 import MapView from './MapView'
@@ -18,8 +28,6 @@ type PendingCreate =
   | { kind: 'FREEDRAW'; drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] }
 
 const S_GRID = { display: 'grid', gridTemplateRows: '1fr auto', height: '100%' } as const
-const S_APP_PANEL_OPEN = { gridTemplateColumns: '1fr 420px' } as const
-const S_APP_PANEL_CLOSED = { gridTemplateColumns: '1fr' } as const
 const S_TOGGLE_BTN: React.CSSProperties = {
   position: 'absolute',
   top: 10,
@@ -30,6 +38,9 @@ const S_TOGGLE_BTN: React.CSSProperties = {
   borderRadius: 8,
 }
 
+const DRAWER_ID = uuid()
+const VIEW_ID = uuid()
+
 export default function App() {
   const [pending, setPending] = useState<PendingCreate>(null)
   const pendingRef = useRef<PendingCreate>(null)
@@ -37,7 +48,7 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('Create Airspace')
   const [modalNote, setModalNote] = useState<string | undefined>(undefined)
-  const [panelOpen, setPanelOpen] = useState(true)
+  const [drawerOpen, setDrawerOpen] = useState(true)
 
   // Transient Zustand subscriptions — react to pending results without
   // subscribing in the render cycle (fixes 1.1, 1.11)
@@ -174,31 +185,40 @@ export default function App() {
   return (
     <>
       <SpamAd />
-      <div className="app" style={panelOpen ? S_APP_PANEL_OPEN : S_APP_PANEL_CLOSED}>
-        <div className="mapWrap">
-          <MapView />
-          <Button
-            variant="icon"
-            size="small"
-            onPress={() => setPanelOpen(v => !v)}
-            style={S_TOGGLE_BTN}
-          >
-            {panelOpen ? (
-              <PanelOpen width={16} height={16} />
-            ) : (
-              <PanelClosed width={16} height={16} />
-            )}
-          </Button>
-        </div>
-
-        <Activity mode={panelOpen ? 'visible' : 'hidden'}>
-          <div className="rightPanel">
-            <div style={S_GRID}>
-              <RightPanel />
-              <HoverAndChat />
-            </div>
+      <DrawerLayout push="right" style={{ height: '100vh' }}>
+        <DrawerLayoutMain>
+          <div className="mapWrap">
+            <MapView />
+            <DrawerTrigger for={`toggle:${VIEW_ID}`}>
+              <Button variant="icon" size="small" style={S_TOGGLE_BTN}>
+                {drawerOpen ? (
+                  <PanelOpen width={16} height={16} />
+                ) : (
+                  <PanelClosed width={16} height={16} />
+                )}
+              </Button>
+            </DrawerTrigger>
           </div>
-        </Activity>
+        </DrawerLayoutMain>
+
+        <Drawer
+          id={DRAWER_ID}
+          defaultView={VIEW_ID}
+          placement="right"
+          size="large"
+          onChange={view => setDrawerOpen(view !== null)}
+        >
+          <DrawerPanel>
+            <DrawerContent>
+              <DrawerView id={VIEW_ID}>
+                <div style={S_GRID}>
+                  <RightPanel />
+                  <HoverAndChat />
+                </div>
+              </DrawerView>
+            </DrawerContent>
+          </DrawerPanel>
+        </Drawer>
 
         <CreateAirspaceModal
           open={modalOpen}
@@ -207,7 +227,7 @@ export default function App() {
           onClose={handleModalClose}
           onCreate={handleModalCreate}
         />
-      </div>
+      </DrawerLayout>
     </>
   )
 }

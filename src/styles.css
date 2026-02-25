@@ -8,6 +8,43 @@
   --danger: #7d1b1b;
   --danger2: #b13131;
   --accent: #4ba3ff;
+  --drawer-size-large: 420px;
+}
+
+/* ───── Drawer group-variant fix ─────
+   Turbopack's CSS module processor hashes class names inside Tailwind variant
+   selectors. The Drawer component applies "group/drawer" as a raw utility class,
+   but the compiled CSS module references the hashed version. These rules replicate
+   the critical group-open and group-size panel variants using the unhashed class
+   so the DrawerPanel renders correctly. */
+@layer components.l1 {
+  .group\/drawer:where([open], [data-open], :open) > div {
+    display: flex;
+  }
+
+  .group\/drawer:where([data-size="large"]):where([data-placement~="right"], [data-placement~="left"]) > div {
+    width: var(--drawer-size-large);
+  }
+
+  .group\/drawer:where([data-size="medium"]):where([data-placement~="right"], [data-placement~="left"]) > div {
+    width: var(--drawer-size-medium);
+  }
+
+  .group\/drawer:where([data-size="small"]):where([data-placement~="right"], [data-placement~="left"]) > div {
+    width: var(--drawer-size-small);
+  }
+
+  .group\/drawer:where([data-size="large"]):where([data-placement~="top"], [data-placement~="bottom"]) > div {
+    height: var(--drawer-size-large);
+  }
+
+  .group\/drawer:where([data-size="medium"]):where([data-placement~="top"], [data-placement~="bottom"]) > div {
+    height: var(--drawer-size-medium);
+  }
+
+  .group\/drawer:where([data-size="small"]):where([data-placement~="top"], [data-placement~="bottom"]) > div {
+    height: var(--drawer-size-small);
+  }
 }
 
 * {
@@ -251,18 +288,6 @@ body {
   font-size: 11px;
   margin: 12px 0 0;
   font-style: italic;
-}
-
-/* ───── App grid layout ───── */
-.app {
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  grid-template-rows: 1fr;
-  height: 100vh;
-  min-height: 100vh;
-}
-.app > * {
-  min-height: 0;
 }
 
 /* ───── Map container ───── */
