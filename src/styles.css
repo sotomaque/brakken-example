@@ -75,103 +75,106 @@
 /* ───── Switch group-variant fix ─────
    Same Turbopack hashing bug: "group/switch" is raw in the DOM but hashed in
    the CSS module selectors. These rules use the unhashed class + structural
-   child selectors (span:first-child = control, span:last-child = label). */
+   child selectors. Note: react-aria wraps a hidden <input> in a VisuallyHidden
+   <span> as the 1st child, so the control is nth-child(2), label is last-child. */
 @layer components.l1 {
   /* Control — hover */
-  .group\/switch:where([data-hovered], :hover) > span:first-child {
+  .group\/switch:where([data-hovered], :hover) > span:nth-child(2) {
     --bg-value: var(--bg-interactive-muted-hover);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-interactive-hover);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-hovered], :hover) > span:first-child::before {
+  .group\/switch:where([data-hovered], :hover) > span:nth-child(2)::before {
     background-color: var(--fg-primary-bold);
   }
 
   /* Control — focus-visible */
-  .group\/switch:where([data-focus-visible], :focus-visible) > span:first-child {
+  .group\/switch:where([data-focus-visible], :focus-visible) > span:nth-child(2) {
     --bg-value: var(--bg-interactive-muted-hover);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-interactive-hover);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-focus-visible], :focus-visible) > span:first-child::before {
+  .group\/switch:where([data-focus-visible], :focus-visible) > span:nth-child(2)::before {
     background-color: var(--fg-primary-bold);
   }
 
   /* Control — pressed */
-  .group\/switch:where([data-pressed], :active) > span:first-child {
+  .group\/switch:where([data-pressed], :active) > span:nth-child(2) {
     --bg-value: var(--bg-interactive-muted-pressed);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-interactive-pressed);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-pressed], :active) > span:first-child::before {
+  .group\/switch:where([data-pressed], :active) > span:nth-child(2)::before {
     background-color: var(--fg-pressed);
   }
 
   /* Control — selected */
-  .group\/switch:where([data-selected], :checked) > span:first-child {
+  .group\/switch:where([data-selected], :checked) > span:nth-child(2) {
+    --bg-value: var(--bg-accent-primary-muted);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-accent-primary-bold);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
-  .group\/switch:where([data-selected], :checked) > span:first-child::before {
+  .group\/switch:where([data-selected], :checked) > span:nth-child(2)::before {
     margin-right: var(--spacing-0, 0px);
     margin-left: var(--spacing-l, 16px);
     background-color: var(--fg-accent-primary-bold);
   }
 
   /* Control — selected + hover */
-  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover) > span:first-child {
+  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover) > span:nth-child(2) {
     --bg-value: var(--bg-accent-primary-muted);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-accent-primary-bold);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
   .group\/switch:where([data-selected], :checked):where([data-hovered], :hover)
-    > span:first-child::before {
+    > span:nth-child(2)::before {
     background-color: var(--fg-accent-primary-hover);
   }
 
   /* Control — selected + focus-visible */
   .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible)
-  > span:first-child {
+  > span:nth-child(2) {
     --bg-value: var(--bg-accent-primary-muted);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-interactive-hover);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
   .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible)
-    > span:first-child::before {
+    > span:nth-child(2)::before {
     background-color: var(--fg-accent-primary-hover);
   }
 
   /* Control — selected + pressed */
   .group\/switch:where([data-selected], :checked):where([data-pressed], :active)
-  > span:first-child {
+  > span:nth-child(2) {
     --bg-value: var(--bg-accent-primary-pressed);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
     --outline-value: var(--outline-accent-primary-pressed);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
   }
   .group\/switch:where([data-selected], :checked):where([data-pressed], :active)
-    > span:first-child::before {
+    > span:nth-child(2)::before {
     background-color: var(--fg-accent-primary-pressed);
   }
 
   /* Control — disabled */
-  .group\/switch:where([disabled], [data-disabled], :disabled) > span:first-child {
+  .group\/switch:where([disabled], [data-disabled], :disabled) > span:nth-child(2) {
     --outline-value: var(--outline-interactive-disabled);
     outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
     background-color: #0000;
   }
-  .group\/switch:where([disabled], [data-disabled], :disabled) > span:first-child::before {
+  .group\/switch:where([disabled], [data-disabled], :disabled) > span:nth-child(2)::before {
     background-color: var(--fg-disabled);
   }
 
   /* Control — disabled + selected */
   .group\/switch:where([disabled], [data-disabled], :disabled):where([data-selected], :checked)
-  > span:first-child {
+  > span:nth-child(2) {
     --bg-value: var(--bg-interactive-disabled);
     background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
   }
@@ -738,6 +741,122 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(159, 177, 197, 0.3);
+}
+
+/* ───── Create Airspace Dialog polish ───── */
+
+/* Modal overlay — above everything including map panels.
+   design-toolkit replaces the default react-aria-ModalOverlay class with
+   "group/dialog" + a hashed CSS module class, so we target the raw class. */
+.group\/dialog {
+  position: fixed;
+  z-index: 9999;
+}
+
+[data-rac][role="dialog"] {
+  background: rgba(14, 20, 30, 0.97);
+  border: 1px solid rgba(75, 163, 255, 0.15);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 8px 40px rgba(0, 0, 0, 0.55),
+    0 0 80px rgba(75, 163, 255, 0.06);
+  backdrop-filter: blur(20px);
+  padding: 6px;
+}
+
+/* Dialog title */
+[data-rac][role="dialog"] [slot="title"] {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 16px 20px 0;
+}
+
+/* Dialog content area */
+[data-rac][role="dialog"] [data-rac].react-aria-DialogContent,
+[data-rac][role="dialog"] > div:nth-child(2) {
+  padding: 14px 20px 10px;
+}
+
+/* Note / info banner inside dialog */
+[data-rac][role="dialog"] .createNote {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  background: rgba(75, 163, 255, 0.08);
+  border: 1px solid rgba(75, 163, 255, 0.18);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(159, 195, 235, 0.9);
+}
+
+/* Strip ALL wrapper borders/outlines on field containers inside dialog */
+[data-rac][role="dialog"] [data-rac]:has(> input[data-rac]),
+[data-rac][role="dialog"] [data-rac]:has(> button[data-rac] > [data-rac]),
+[data-rac][role="dialog"] [role="group"][data-rac] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Inputs inside dialog */
+[data-rac][role="dialog"] input[data-rac] {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(35, 48, 65, 0.8);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 10px;
+  width: 100%;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+[data-rac][role="dialog"] input[data-rac]:focus {
+  border-color: rgba(75, 163, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(75, 163, 255, 0.1);
+  outline: none;
+}
+[data-rac][role="dialog"] input[data-rac]::placeholder {
+  color: rgba(159, 177, 197, 0.35);
+}
+
+/* Select trigger inside dialog (scoped to field groups, not footer buttons) */
+[data-rac][role="dialog"] [role="group"][data-rac] button[data-rac] {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(35, 48, 65, 0.8);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 10px;
+  width: 100%;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+[data-rac][role="dialog"] [role="group"][data-rac] button[data-rac]:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(159, 177, 197, 0.3);
+}
+
+/* Field labels inside dialog */
+[data-rac][role="dialog"] label[data-rac] {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* Dialog footer — breathing room from inputs and edges */
+[data-rac][role="dialog"] footer[data-rac],
+[data-rac][role="dialog"] > div:last-child {
+  padding: 14px 20px 16px;
+  gap: 10px;
 }
 
 /* ───── Right-panel input & accordion polish ───── */

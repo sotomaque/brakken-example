@@ -128,13 +128,221 @@ const PICASSO_DASH: Record<string, number[] | undefined> = {
   COLD: [4, 2, 1, 2],
 }
 
+// ── Extracted tools panel — subscribes to store independently of MapView ──
+const MapToolsPanel = memo(function MapToolsPanel({
+  applyPicassoRadius,
+}: {
+  applyPicassoRadius: (r: number) => void
+}) {
+  const gridOptions = useAppStore(s => s.gridOptions)
+  const layerToggles = useAppStore(s => s.layerToggles)
+  const picassoMode = useAppStore(s => s.picassoMode)
+  const picassoRadius = useAppStore(s => s.picassoRadius)
+  const drawType = useAppStore(s => s.drawType)
+
+  const [toolsMinimized, setToolsMinimized] = useState(false)
+
+  return (
+    <div className="mapTools">
+      <button
+        type="button"
+        style={S_OVERLAY_HEADER}
+        onClick={() => setToolsMinimized(v => !v)}
+        title="Click to expand/collapse"
+      >
+        <h4 style={S_H4}>
+          <Layers width={14} height={14} style={S_ICON_INLINE} /> Grid & Layers
+        </h4>
+        {toolsMinimized ? (
+          <ChevronRight width={14} height={14} style={S_COLLAPSE_ICON} />
+        ) : (
+          <ChevronDown width={14} height={14} style={S_COLLAPSE_ICON} />
+        )}
+      </button>
+
+      {!toolsMinimized ? (
+        <>
+          <div className="section">
+            <Switch
+              isSelected={gridOptions.showGrid}
+              onChange={v => useAppStore.getState().setGridOptions({ showGrid: v })}
+              labelPosition="start"
+            >
+              Show grid
+            </Switch>
+            <Slider
+              label="Grid opacity"
+              minValue={0}
+              maxValue={1}
+              step={0.01}
+              value={gridOptions.gridOpacity}
+              onChange={v =>
+                useAppStore.getState().setGridOptions({ gridOpacity: v as number })
+              }
+              showValueLabels={false}
+              layout="grid"
+            />
+            <div style={S_GRID_COLOR_ROW}>
+              <span>Grid color</span>
+              <ColorPicker
+                items={GRID_COLOR_SWATCHES}
+                value={gridOptions.gridColor}
+                onChange={color =>
+                  useAppStore.getState().setGridOptions({ gridColor: color.toString('hex') })
+                }
+              />
+            </div>
+            <Slider
+              label="Killbox width"
+              minValue={1}
+              maxValue={8}
+              step={1}
+              value={gridOptions.killboxLineWidth}
+              onChange={v =>
+                useAppStore.getState().setGridOptions({ killboxLineWidth: v as number })
+              }
+              showValueLabels={false}
+              layout="grid"
+            />
+            <Slider
+              label="Keypad width"
+              minValue={1}
+              maxValue={6}
+              step={1}
+              value={gridOptions.keypadLineWidth}
+              onChange={v =>
+                useAppStore.getState().setGridOptions({ keypadLineWidth: v as number })
+              }
+              showValueLabels={false}
+              layout="grid"
+            />
+            <Switch
+              isSelected={gridOptions.showKillboxLabels}
+              onChange={v => useAppStore.getState().setGridOptions({ showKillboxLabels: v })}
+              labelPosition="start"
+            >
+              Killbox labels
+            </Switch>
+            <Slider
+              label="Label size"
+              minValue={10}
+              maxValue={22}
+              step={1}
+              value={gridOptions.labelFontSize}
+              onChange={v =>
+                useAppStore.getState().setGridOptions({ labelFontSize: v as number })
+              }
+              showValueLabels={false}
+              layout="grid"
+            />
+            <Slider
+              label="Label opacity"
+              minValue={0}
+              maxValue={1}
+              step={0.01}
+              value={gridOptions.labelOpacity}
+              onChange={v =>
+                useAppStore.getState().setGridOptions({ labelOpacity: v as number })
+              }
+              showValueLabels={false}
+              layout="grid"
+            />
+          </div>
+
+          <div className="section">
+            <Switch
+              isSelected={layerToggles.basemap}
+              onChange={v => useAppStore.getState().setLayerToggle('basemap', v)}
+              labelPosition="start"
+            >
+              Basemap
+            </Switch>
+            <Switch
+              isSelected={layerToggles.airspaces}
+              onChange={v => useAppStore.getState().setLayerToggle('airspaces', v)}
+              labelPosition="start"
+            >
+              Airspaces
+            </Switch>
+            <Switch
+              isSelected={layerToggles.routes}
+              onChange={v => useAppStore.getState().setLayerToggle('routes', v)}
+              labelPosition="start"
+            >
+              Routes
+            </Switch>
+            <Switch
+              isSelected={layerToggles.freedraw}
+              onChange={v => useAppStore.getState().setLayerToggle('freedraw', v)}
+              labelPosition="start"
+            >
+              Free-draw
+            </Switch>
+            <Switch
+              isSelected={layerToggles.acms}
+              onChange={v => useAppStore.getState().setLayerToggle('acms', v)}
+              labelPosition="start"
+            >
+              ACMs (stub)
+            </Switch>
+            <Switch
+              isSelected={layerToggles.refs}
+              onChange={v => useAppStore.getState().setLayerToggle('refs', v)}
+              labelPosition="start"
+            >
+              Reference points
+            </Switch>
+            <Switch
+              isSelected={picassoMode}
+              onChange={() => useAppStore.getState().togglePicassoMode()}
+              labelPosition="start"
+            >
+              Picasso mode
+            </Switch>
+            {picassoMode ? (
+              <Slider
+                label="Offset radius"
+                minValue={4}
+                maxValue={16}
+                step={1}
+                value={picassoRadius}
+                onChange={v => {
+                  const r = v as number
+                  useAppStore.getState().setPicassoRadius(r)
+                  applyPicassoRadius(r)
+                }}
+                showValueLabels={false}
+                layout="grid"
+              />
+            ) : null}
+          </div>
+        </>
+      ) : null}
+
+      <div className="section">
+        <SelectField
+          label="Draw type"
+          size="small"
+          selectedKey={drawType}
+          onSelectionChange={key =>
+            useAppStore.getState().setDrawType(key as 'POLYGON' | 'ROUTE' | 'POINT')
+          }
+        >
+          <OptionsItem id="POLYGON">Polygon</OptionsItem>
+          <OptionsItem id="ROUTE">Route line</OptionsItem>
+          <OptionsItem id="POINT">Point</OptionsItem>
+        </SelectField>
+      </div>
+    </div>
+  )
+})
+
 // Module-level guard for map init (fix 3.4 — prevents double init in StrictMode)
 let mapDidInit = false
 
 export default memo(function MapView() {
   const mapRef = useRef<MLMap | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [toolsMinimized, setToolsMinimized] = useState(false)
   const [shortcutsMinimized, setShortcutsMinimized] = useState(false)
 
   // Granular selectors (fix 5a) -- only subscribe to slices used in render or effects
@@ -895,198 +1103,7 @@ export default memo(function MapView() {
           {!shortcutsMinimized ? SHORTCUTS_JSX : null}
         </div>
 
-        {/* GRID & LAYERS (collapsible) */}
-        <div className="mapTools">
-          <button
-            type="button"
-            style={S_OVERLAY_HEADER}
-            onClick={() => setToolsMinimized(v => !v)}
-            title="Click to expand/collapse"
-          >
-            <h4 style={S_H4}>
-              <Layers width={14} height={14} style={S_ICON_INLINE} /> Grid & Layers
-            </h4>
-            {toolsMinimized ? (
-              <ChevronRight width={14} height={14} style={S_COLLAPSE_ICON} />
-            ) : (
-              <ChevronDown width={14} height={14} style={S_COLLAPSE_ICON} />
-            )}
-          </button>
-
-          {!toolsMinimized ? (
-            <>
-              <div className="section">
-                <Switch
-                  isSelected={gridOptions.showGrid}
-                  onChange={v => useAppStore.getState().setGridOptions({ showGrid: v })}
-                  labelPosition="start"
-                >
-                  Show grid
-                </Switch>
-                <Slider
-                  label="Grid opacity"
-                  minValue={0}
-                  maxValue={1}
-                  step={0.01}
-                  value={gridOptions.gridOpacity}
-                  onChange={v =>
-                    useAppStore.getState().setGridOptions({ gridOpacity: v as number })
-                  }
-                  showValueLabels={false}
-                  layout="grid"
-                />
-                <div style={S_GRID_COLOR_ROW}>
-                  <span>Grid color</span>
-                  <ColorPicker
-                    items={GRID_COLOR_SWATCHES}
-                    value={gridOptions.gridColor}
-                    onChange={color =>
-                      useAppStore.getState().setGridOptions({ gridColor: color.toString('hex') })
-                    }
-                  />
-                </div>
-                <Slider
-                  label="Killbox width"
-                  minValue={1}
-                  maxValue={8}
-                  step={1}
-                  value={gridOptions.killboxLineWidth}
-                  onChange={v =>
-                    useAppStore.getState().setGridOptions({ killboxLineWidth: v as number })
-                  }
-                  showValueLabels={false}
-                  layout="grid"
-                />
-                <Slider
-                  label="Keypad width"
-                  minValue={1}
-                  maxValue={6}
-                  step={1}
-                  value={gridOptions.keypadLineWidth}
-                  onChange={v =>
-                    useAppStore.getState().setGridOptions({ keypadLineWidth: v as number })
-                  }
-                  showValueLabels={false}
-                  layout="grid"
-                />
-                <Switch
-                  isSelected={gridOptions.showKillboxLabels}
-                  onChange={v => useAppStore.getState().setGridOptions({ showKillboxLabels: v })}
-                  labelPosition="start"
-                >
-                  Killbox labels
-                </Switch>
-                <Slider
-                  label="Label size"
-                  minValue={10}
-                  maxValue={22}
-                  step={1}
-                  value={gridOptions.labelFontSize}
-                  onChange={v =>
-                    useAppStore.getState().setGridOptions({ labelFontSize: v as number })
-                  }
-                  showValueLabels={false}
-                  layout="grid"
-                />
-                <Slider
-                  label="Label opacity"
-                  minValue={0}
-                  maxValue={1}
-                  step={0.01}
-                  value={gridOptions.labelOpacity}
-                  onChange={v =>
-                    useAppStore.getState().setGridOptions({ labelOpacity: v as number })
-                  }
-                  showValueLabels={false}
-                  layout="grid"
-                />
-              </div>
-
-              <div className="section">
-                <Switch
-                  isSelected={layerToggles.basemap}
-                  onChange={v => useAppStore.getState().setLayerToggle('basemap', v)}
-                  labelPosition="start"
-                >
-                  Basemap
-                </Switch>
-                <Switch
-                  isSelected={layerToggles.airspaces}
-                  onChange={v => useAppStore.getState().setLayerToggle('airspaces', v)}
-                  labelPosition="start"
-                >
-                  Airspaces
-                </Switch>
-                <Switch
-                  isSelected={layerToggles.routes}
-                  onChange={v => useAppStore.getState().setLayerToggle('routes', v)}
-                  labelPosition="start"
-                >
-                  Routes
-                </Switch>
-                <Switch
-                  isSelected={layerToggles.freedraw}
-                  onChange={v => useAppStore.getState().setLayerToggle('freedraw', v)}
-                  labelPosition="start"
-                >
-                  Free-draw
-                </Switch>
-                <Switch
-                  isSelected={layerToggles.acms}
-                  onChange={v => useAppStore.getState().setLayerToggle('acms', v)}
-                  labelPosition="start"
-                >
-                  ACMs (stub)
-                </Switch>
-                <Switch
-                  isSelected={layerToggles.refs}
-                  onChange={v => useAppStore.getState().setLayerToggle('refs', v)}
-                  labelPosition="start"
-                >
-                  Reference points
-                </Switch>
-                <Switch
-                  isSelected={picassoMode}
-                  onChange={() => useAppStore.getState().togglePicassoMode()}
-                  labelPosition="start"
-                >
-                  Picasso mode
-                </Switch>
-                {picassoMode ? (
-                  <Slider
-                    label="Offset radius"
-                    minValue={4}
-                    maxValue={16}
-                    step={1}
-                    value={picassoRadius}
-                    onChange={v => {
-                      const r = v as number
-                      useAppStore.getState().setPicassoRadius(r)
-                      applyPicassoRadius(r)
-                    }}
-                    showValueLabels={false}
-                    layout="grid"
-                  />
-                ) : null}
-              </div>
-            </>
-          ) : null}
-
-          <div className="section">
-            <SelectField
-              label="Draw type"
-              size="small"
-              selectedKey={drawType}
-              onSelectionChange={key =>
-                useAppStore.getState().setDrawType(key as 'POLYGON' | 'ROUTE' | 'POINT')
-              }
-            >
-              <OptionsItem id="POLYGON">Polygon</OptionsItem>
-              <OptionsItem id="ROUTE">Route line</OptionsItem>
-              <OptionsItem id="POINT">Point</OptionsItem>
-            </SelectField>
-          </div>
-        </div>
+        <MapToolsPanel applyPicassoRadius={applyPicassoRadius} />
       </div>
     </div>
   )

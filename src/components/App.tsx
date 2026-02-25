@@ -210,14 +210,14 @@ export default function App() {
           onChange={view => setDrawerOpen(view !== null)}
         >
           <DrawerPanel>
-            <DrawerContent>
-              <DrawerView id={VIEW_ID}>
+            <DrawerView id={VIEW_ID}>
+              <DrawerContent>
                 <div style={S_GRID}>
                   <RightPanel />
                   <HoverAndChat />
                 </div>
-              </DrawerView>
-            </DrawerContent>
+              </DrawerContent>
+            </DrawerView>
           </DrawerPanel>
         </Drawer>
 
