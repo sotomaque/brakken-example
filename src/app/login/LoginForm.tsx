@@ -36,12 +36,8 @@ export default function LoginForm() {
       onSubmit={handleSubmit}
       className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-white/10 bg-[#121923] p-8 shadow-2xl"
     >
-      <h1 className="text-center text-lg font-semibold text-white">
-        Airspace Deconfliction
-      </h1>
-      <p className="text-center text-sm text-white/50">
-        Enter password to continue
-      </p>
+      <h1 className="text-center text-lg font-semibold text-white">Airspace Deconfliction</h1>
+      <p className="text-center text-sm text-white/50">Enter password to continue</p>
 
       <input
         type="password"

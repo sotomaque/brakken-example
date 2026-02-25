@@ -4,10 +4,7 @@ export async function POST(request: Request) {
   const { password } = (await request.json()) as { password?: string }
 
   if (!process.env.APP_PASSWORD) {
-    return NextResponse.json(
-      { error: 'APP_PASSWORD not configured on server' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'APP_PASSWORD not configured on server' }, { status: 500 })
   }
 
   if (password !== process.env.APP_PASSWORD) {
