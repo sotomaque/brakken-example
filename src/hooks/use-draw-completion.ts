@@ -1,59 +1,54 @@
-import { uuid } from '@accelint/core'
-import {
-  Button,
-  ClassificationBanner,
-  Drawer,
-  DrawerContent,
-  DrawerLayout,
-  DrawerLayoutMain,
-  DrawerPanel,
-  DrawerTrigger,
-  DrawerView,
-} from '@accelint/design-toolkit'
-import { PanelClosed, PanelOpen } from '@accelint/icons'
-import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AirspaceState, Altitude } from '@/lib/types'
 import { deriveKeypadsFromPolygon } from '@/lib/utils'
 import { type EditMode, useAppStore } from '@/store'
-import CreateAirspaceModal from './CreateAirspaceModal'
-import HoverAndChat from './HoverAndChat'
-import RightPanel from './RightPanel'
-
-const MapView = dynamic(() => import('./MapView'), { ssr: false })
-const SpamAd = dynamic(() => import('./SpamAd'), { ssr: false, loading: () => null })
 
 type PendingCreate =
   | null
   | { kind: 'KEYPAD' }
   | { kind: 'FREEDRAW'; drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] }
 
-const S_GRID = { display: 'grid', gridTemplateRows: '1fr auto', height: '100%' } as const
-const S_DRAWER_LAYOUT: React.CSSProperties = { height: '100vh' }
-const S_TOGGLE_BTN: React.CSSProperties = {
-  position: 'absolute',
-  top: 10,
-  left: 10,
-  zIndex: 6,
-  background: 'rgba(18,25,35,0.92)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
+function applyRedraw(
+  em: Extract<EditMode, { kind: 'REDRAW_GEOMETRY' }>,
+  detail: { drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] },
+) {
+  const st = useAppStore.getState()
+  if (em.targetType === 'AIRSPACE') {
+    const src = st.airspaces.find(a => a.id === em.targetId)
+    if (!src) return
+    if (detail.drawType !== 'POLYGON') return
+    const poly: GeoJSON.Polygon = {
+      type: 'Polygon',
+      coordinates: [[...detail.coords, detail.coords[0]]],
+    }
+    const keypads = deriveKeypadsFromPolygon(poly).toSorted()
+    st.updateAirspace(em.targetId, { geometry: poly, keypads, kind: 'FREEDRAW' })
+  } else {
+    const src = st.shapes.find(s => s.id === em.targetId)
+    if (!src) return
+    if (detail.drawType === 'POLYGON') {
+      const poly: GeoJSON.Polygon = {
+        type: 'Polygon',
+        coordinates: [[...detail.coords, detail.coords[0]]],
+      }
+      st.updateShapeGeometry(em.targetId, poly)
+    } else if (detail.drawType === 'ROUTE') {
+      st.updateShapeGeometry(em.targetId, { type: 'LineString', coordinates: detail.coords })
+    } else {
+      const p = detail.coords[detail.coords.length - 1] ?? detail.coords[0]
+      st.updateShapeGeometry(em.targetId, { type: 'Point', coordinates: p })
+    }
+  }
 }
 
-const DRAWER_ID = uuid()
-const VIEW_ID = uuid()
-
-export default function App() {
+export function useDrawCompletion() {
   const [pending, setPending] = useState<PendingCreate>(null)
   const pendingRef = useRef<PendingCreate>(null)
   pendingRef.current = pending
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('Create Airspace')
   const [modalNote, setModalNote] = useState<string | undefined>(undefined)
-  const [drawerOpen, setDrawerOpen] = useState(true)
 
-  // Transient Zustand subscriptions — react to pending results without
-  // subscribing in the render cycle (fixes 1.1, 1.11)
   useEffect(() => {
     const unsub = useAppStore.subscribe((state, prev) => {
       // Draw completion
@@ -115,39 +110,6 @@ export default function App() {
     return unsub
   }, [])
 
-  function applyRedraw(
-    em: Extract<EditMode, { kind: 'REDRAW_GEOMETRY' }>,
-    detail: { drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] },
-  ) {
-    const st = useAppStore.getState()
-    if (em.targetType === 'AIRSPACE') {
-      const src = st.airspaces.find(a => a.id === em.targetId)
-      if (!src) return
-      if (detail.drawType !== 'POLYGON') return
-      const poly: GeoJSON.Polygon = {
-        type: 'Polygon',
-        coordinates: [[...detail.coords, detail.coords[0]]],
-      }
-      const keypads = deriveKeypadsFromPolygon(poly).toSorted()
-      st.updateAirspace(em.targetId, { geometry: poly, keypads, kind: 'FREEDRAW' })
-    } else {
-      const src = st.shapes.find(s => s.id === em.targetId)
-      if (!src) return
-      if (detail.drawType === 'POLYGON') {
-        const poly: GeoJSON.Polygon = {
-          type: 'Polygon',
-          coordinates: [[...detail.coords, detail.coords[0]]],
-        }
-        st.updateShapeGeometry(em.targetId, poly)
-      } else if (detail.drawType === 'ROUTE') {
-        st.updateShapeGeometry(em.targetId, { type: 'LineString', coordinates: detail.coords })
-      } else {
-        const p = detail.coords[detail.coords.length - 1] ?? detail.coords[0]
-        st.updateShapeGeometry(em.targetId, { type: 'Point', coordinates: p })
-      }
-    }
-  }
-
   const handleModalClose = useCallback(() => {
     setModalOpen(false)
     setPending(null)
@@ -184,53 +146,5 @@ export default function App() {
     [],
   )
 
-  return (
-    <>
-      <SpamAd />
-      <ClassificationBanner variant="unclassified" />
-      <DrawerLayout push="right" style={S_DRAWER_LAYOUT}>
-        <DrawerLayoutMain>
-          <div className="mapWrap">
-            <MapView />
-            <DrawerTrigger for={`toggle:${VIEW_ID}`}>
-              <Button variant="icon" size="small" style={S_TOGGLE_BTN}>
-                {drawerOpen ? (
-                  <PanelOpen width={16} height={16} />
-                ) : (
-                  <PanelClosed width={16} height={16} />
-                )}
-              </Button>
-            </DrawerTrigger>
-          </div>
-        </DrawerLayoutMain>
-
-        <Drawer
-          id={DRAWER_ID}
-          defaultView={VIEW_ID}
-          placement="right"
-          size="large"
-          onChange={view => setDrawerOpen(view !== null)}
-        >
-          <DrawerPanel>
-            <DrawerView id={VIEW_ID}>
-              <DrawerContent>
-                <div style={S_GRID}>
-                  <RightPanel />
-                  <HoverAndChat />
-                </div>
-              </DrawerContent>
-            </DrawerView>
-          </DrawerPanel>
-        </Drawer>
-
-        <CreateAirspaceModal
-          open={modalOpen}
-          title={modalTitle}
-          note={modalNote}
-          onClose={handleModalClose}
-          onCreate={handleModalCreate}
-        />
-      </DrawerLayout>
-    </>
-  )
+  return { modalOpen, modalTitle, modalNote, handleModalClose, handleModalCreate }
 }
