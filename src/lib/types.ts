@@ -45,13 +45,6 @@ export type FreeDrawShape = {
   derivedKeypads: string[]
 }
 
-export type Route = {
-  id: string
-  ownerCallsign: string
-  polyline: GeoJSON.LineString
-  derivedKeypads: string[]
-}
-
 export type Scope =
   | { kind: 'AOR' }
   | { kind: 'KILLBOX'; killbox: string }

@@ -87,7 +87,7 @@ export function altitudeConflicts(a: Altitude, b: Altitude): boolean {
  * Treat AOR as flat rectangle in lat/lon.
  * 3 killbox rows x 4 cols; each killbox 3x3 keypads.
  */
-export function aorToFrac(p: LatLon) {
+function aorToFrac(p: LatLon) {
   // fraction across AOR: x 0..1 west->east, y 0..1 south->north
   const x = (p.lon - AOR.sw.lon) / (AOR.se.lon - AOR.sw.lon)
   const y = (p.lat - AOR.sw.lat) / (AOR.nw.lat - AOR.sw.lat)

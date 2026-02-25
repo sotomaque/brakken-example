@@ -1,4 +1,4 @@
-import { AOR, fracToLatLon, KILLBOX_COLS, KILLBOX_ROWS } from './utils'
+import { fracToLatLon, KILLBOX_COLS, KILLBOX_ROWS } from './utils'
 
 export function gridLinesGeoJSON() {
   // Lines for killbox and keypad boundaries
@@ -127,8 +127,3 @@ export function keypadPolygonsGeoJSON() {
   }
   return { type: 'FeatureCollection', features } as GeoJSON.FeatureCollection<GeoJSON.Polygon>
 }
-
-export const AOR_BOUNDS: [[number, number], [number, number]] = [
-  [AOR.sw.lon, AOR.sw.lat],
-  [AOR.ne.lon, AOR.ne.lat],
-]
