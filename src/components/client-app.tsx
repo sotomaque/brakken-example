@@ -1,7 +1,7 @@
 'use client'
 
 import { PortalProvider, ThemeProvider } from '@accelint/design-toolkit'
-import App from './App'
+import App from './app'
 
 export function ClientApp() {
   return (

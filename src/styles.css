@@ -802,11 +802,11 @@ body {
 [data-rac][role="dialog"] [data-rac]:has(> input[data-rac]),
 [data-rac][role="dialog"] [data-rac]:has(> button[data-rac] > [data-rac]),
 [data-rac][role="dialog"] [role="group"][data-rac] {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  padding: 0 !important;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
 }
 
 /* Inputs inside dialog */

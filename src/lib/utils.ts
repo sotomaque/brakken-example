@@ -28,7 +28,7 @@ export function clamp(n: number, a: number, b: number) {
 }
 
 export function uid(prefix = 'id') {
-  return prefix + '_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16)
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`
 }
 
 export function parseLatLon(s: string): LatLon | null {
@@ -87,7 +87,7 @@ export function altitudeConflicts(a: Altitude, b: Altitude): boolean {
  * Treat AOR as flat rectangle in lat/lon.
  * 3 killbox rows x 4 cols; each killbox 3x3 keypads.
  */
-export function aorToFrac(p: LatLon) {
+function aorToFrac(p: LatLon) {
   // fraction across AOR: x 0..1 west->east, y 0..1 south->north
   const x = (p.lon - AOR.sw.lon) / (AOR.se.lon - AOR.sw.lon)
   const y = (p.lat - AOR.sw.lat) / (AOR.nw.lat - AOR.sw.lat)

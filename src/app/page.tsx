@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
-import { ClientApp } from '@/components/ClientApp'
+import { ClientApp } from '@/components/client-app'
 
 export default function Page() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <ClientApp />
     </Suspense>
   )

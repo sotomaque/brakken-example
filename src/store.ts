@@ -431,8 +431,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (overlap.length === 0) continue
 
         // Track geographic overlap for picasso mode (altitude-independent)
-        adjacency.get(A.id)!.add(B.id)
-        adjacency.get(B.id)!.add(A.id)
+        adjacency.get(A.id)?.add(B.id)
+        adjacency.get(B.id)?.add(A.id)
 
         if (!altitudeConflicts(A.altitude, B.altitude)) continue
 
@@ -469,11 +469,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         continue
       }
 
-      // BFS connected component
+      // BFS connected component (bounded by node count as safety guard)
       const component: string[] = []
       const queue: string[] = [a.id]
       visited.add(a.id)
-      while (queue.length > 0) {
+      const maxIter = relevant.length
+      let steps = 0
+      while (queue.length > 0 && steps < maxIter) {
+        steps++
         const current = queue.shift()!
         component.push(current)
         for (const neighbor of adjacency.get(current)!) {

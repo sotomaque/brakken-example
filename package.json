@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start",
     "format": "biome format --write ./src",
-    "check": "biome check --write ./src"
+    "check": "biome check --write ./src",
+    "lint": "biome check ./src",
+    "lint:fix": "biome check --write ./src",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "knip": "knip"
   },
   "dependencies": {
     "@accelint/core": "^0.5.2",
@@ -41,9 +47,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
+    "@happy-dom/global-registrator": "^20.7.0",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "knip": "^5.85.0",
+    "lefthook": "^2.1.1",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.5.4"
   }

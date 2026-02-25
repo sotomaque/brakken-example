@@ -28,6 +28,9 @@ import {
   useTransition,
 } from 'react'
 import type { Key } from 'react-aria-components'
+import { type ConflictInfo, useConflictMap } from '@/hooks/use-conflict-map'
+import { useVisibleAirspaces } from '@/hooks/use-visible-airspaces'
+import { parseAltitudeString } from '@/lib/altitude'
 import type { Aircraft, AirspaceReservation } from '@/lib/types'
 import { fmtAlt } from '@/lib/utils'
 import { useAppStore } from '@/store'
@@ -44,7 +47,7 @@ const QUICK_COLORS = [
 // Hoisted style constants for hot-path rendering
 const S_FLEX_ROW: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center' }
 const S_FLEX_ROW_10: CSSProperties = { display: 'flex', gap: 10, alignItems: 'center' }
-const S_FLEX_GAP8: CSSProperties = { display: 'flex', gap: 8 }
+const _S_FLEX_GAP8: CSSProperties = { display: 'flex', gap: 8 }
 const S_HEADER_BUTTONS: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -137,28 +140,7 @@ const KILLBOX_OPTIONS = [
 ]
 
 function handleAltChange(id: string, val: string) {
-  const cleanVal = val.trim()
-  if (!cleanVal) return
-
-  let newAlt:
-    | { kind: 'SINGLE'; singleFt: number }
-    | { kind: 'BLOCK'; minFt: number; maxFt: number }
-    | undefined
-
-  if (cleanVal.includes('-')) {
-    const [minStr, maxStr] = cleanVal.split('-')
-    const minFt = parseInt(minStr, 10)
-    const maxFt = parseInt(maxStr, 10)
-    if (!isNaN(minFt) && !isNaN(maxFt)) {
-      newAlt = { kind: 'BLOCK', minFt, maxFt }
-    }
-  } else {
-    const singleFt = parseInt(cleanVal, 10)
-    if (!isNaN(singleFt)) {
-      newAlt = { kind: 'SINGLE', singleFt }
-    }
-  }
-
+  const newAlt = parseAltitudeString(val)
   if (newAlt) {
     useAppStore.getState().updateAirspace(id, { altitude: newAlt })
     useAppStore.getState().recomputeDerived()
@@ -166,8 +148,6 @@ function handleAltChange(id: string, val: string) {
 }
 
 // ── Extracted memoized row component ──────────────────────────────────
-type ConflictInfo = { count: number; others: string[]; overlap: string[] }
-
 type AirspaceRowProps = {
   a: AirspaceReservation
   conflict: ConflictInfo | undefined
@@ -222,6 +202,8 @@ const AirspaceRow = memo(function AirspaceRow({
             </div>
           </div>
         </AccordionTrigger>
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: event containment for accordion header buttons */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: event containment for accordion header buttons */}
         <div style={S_FLEX_ROW} onClick={e => e.stopPropagation()}>
           {conflict ? (
             <Button
@@ -481,50 +463,11 @@ export default memo(function RightPanel() {
 
   const aircraftByCallsign = useMemo(() => new Map(aircraft.map(a => [a.callsign, a])), [aircraft])
 
-  const conflictSet = useMemo(() => {
-    const map = new Map<string, ConflictInfo>()
-    const overlapSets = new Map<string, Set<string>>()
-    for (const c of conflicts) {
-      const add = (id: string, otherId: string) => {
-        const prev = map.get(id) || { count: 0, others: [], overlap: [] }
-        prev.count += 1
-        prev.others.push(otherId)
-        let s = overlapSets.get(id)
-        if (!s) {
-          s = new Set()
-          overlapSets.set(id, s)
-        }
-        for (const kp of c.overlappingKeypads) s.add(kp)
-        map.set(id, prev)
-      }
-      add(c.aId, c.bId)
-      add(c.bId, c.aId)
-    }
-    for (const [id, info] of map) {
-      info.overlap = Array.from(overlapSets.get(id)!)
-    }
-    return map
-  }, [conflicts])
+  const conflictSet = useConflictMap(conflicts)
 
-  const visibleAirspaces = useMemo(() => {
-    const tabFilter = (a: AirspaceReservation) => {
-      if (activeTab === 'ARCHIVED') return a.state === 'ARCHIVED'
-      if (activeTab === 'ACTIVE') return a.state === 'ACTIVE'
-      return a.state === 'PLANNED' || a.state === 'COLD'
-    }
-    let list = airspaces.filter(tabFilter)
+  const visibleAirspaces = useVisibleAirspaces(airspaces, activeTab, scope, shapes)
 
-    if (scope.kind === 'KILLBOX') {
-      list = list.filter(a => a.keypads.some(k => k.startsWith(scope.killbox)))
-    } else if (scope.kind === 'AREA') {
-      const area = shapes.find(s => s.id === scope.areaId)
-      const kp = new Set(area?.derivedKeypads ?? [])
-      list = list.filter(a => a.keypads.some(k => kp.has(k)))
-    }
-    return list
-  }, [airspaces, activeTab, scope, shapes])
-
-  const namedAreas = useMemo(() => shapes.filter(s => s.tags.includes('ROZ')), [shapes])
+  const namedAreas = shapes.filter(s => s.tags.includes('ROZ'))
 
   const scopeKey =
     scope.kind === 'AOR'
@@ -539,6 +482,8 @@ export default memo(function RightPanel() {
   )
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: click-outside-to-dismiss context menu
+    // biome-ignore lint/a11y/noStaticElementInteractions: click-outside-to-dismiss context menu
     <div className="rightPanel" onClick={() => ctx && setCtx(null)}>
       <div className="tablePanel">
         <div className="panelHeader">
@@ -650,6 +595,7 @@ export default memo(function RightPanel() {
 
       {ctx ? (
         <div
+          role="menu"
           style={{ ...S_CTX_MENU, left: ctx.x, top: ctx.y }}
           onMouseDown={e => e.stopPropagation()}
         >

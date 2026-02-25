@@ -1,7 +1,8 @@
 import { Button, Checkbox, TextField } from '@accelint/design-toolkit'
 import { type CSSProperties, memo, useMemo } from 'react'
+import { useHoverText } from '@/hooks/use-hover-text'
 import { SCENARIO } from '@/lib/scenario'
-import { fmtAlt, parseTimeZ, toHHMMSS } from '@/lib/utils'
+import { parseTimeZ, toHHMMSS } from '@/lib/utils'
 import { useAppStore } from '@/store'
 
 const TIME_REGEX = /^(\d{2}):(\d{2}):(\d{2})$/
@@ -18,6 +19,8 @@ const S_TIME_INPUT: CSSProperties = {
   fontSize: 12,
 }
 
+const SORTED_EVENTS = [...SCENARIO.events].sort((a, b) => parseTimeZ(a.timeZ) - parseTimeZ(b.timeZ))
+
 export default memo(function HoverAndChat() {
   // Granular selectors -- only re-render when these specific slices change
   const hover = useAppStore(s => s.hover)
@@ -31,93 +34,12 @@ export default memo(function HoverAndChat() {
   const setCurrentTimeSec = useAppStore(s => s.setCurrentTimeSec)
   const toggleHandled = useAppStore(s => s.toggleHandled)
 
-  const events = useMemo(() => {
-    return [...SCENARIO.events].sort((a, b) => parseTimeZ(a.timeZ) - parseTimeZ(b.timeZ))
-  }, [])
-
   const visibleEvents = useMemo(
-    () => events.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec),
-    [events, currentTimeSec],
+    () => SORTED_EVENTS.filter(e => parseTimeZ(e.timeZ) <= currentTimeSec),
+    [currentTimeSec],
   )
 
-  const hoverText = useMemo(() => {
-    if (hover.kind === 'NONE')
-      return 'Hover a keypad / airspace / reference point to see details here.'
-
-    if (hover.kind === 'REF') {
-      return `${hover.keypadId}/${hover.label.toUpperCase()}`
-    }
-
-    if (hover.kind === 'AIRSPACE') {
-      const a = airspaces.find(x => x.id === hover.airspaceId)
-      if (!a) return 'Unknown airspace'
-      const alt =
-        a.altitude.kind === 'SINGLE'
-          ? `${a.altitude.singleFt}`
-          : `${a.altitude.minFt}-${a.altitude.maxFt}`
-      const kp = a.keypads.toSorted().join(' ')
-      return `${a.ownerCallsign}
-${a.state} ${a.kind}
-ALT ${alt} ft
-${kp}`
-    }
-
-    if (hover.kind === 'SHAPE') {
-      const s = shapes.find(x => x.id === hover.shapeId)
-      if (!s) return 'Unknown shape'
-      const tags = s.tags.join(',')
-      const kp = s.derivedKeypads.toSorted().join(' ')
-      return `${s.label}
-${s.shapeType} [${tags}]
-${kp}`
-    }
-
-    if (hover.kind === 'KEYPAD') {
-      const keypadId = hover.keypadId
-      const inScope = (kp: string) => {
-        if (scope.kind === 'AOR') return true
-        if (scope.kind === 'KILLBOX') return kp.startsWith(scope.killbox)
-        if (scope.kind === 'AREA') {
-          const area = shapes.find(s => s.id === scope.areaId)
-          const set = new Set(area?.derivedKeypads ?? [])
-          return set.has(kp)
-        }
-        return true
-      }
-      if (!inScope(keypadId))
-        return `${keypadId}
-(out of scope)`
-
-      const stack: { label: string; sortAlt: number }[] = []
-
-      for (const s of shapes) {
-        if (!s.tags.includes('ROZ')) continue
-        if (!s.derivedKeypads.includes(keypadId)) continue
-        const alt = s.altitude ? fmtAlt(s.altitude) : 'SFC-??'
-        const sortAlt =
-          s.altitude?.kind === 'SINGLE' ? s.altitude.singleFt : (s.altitude?.maxFt ?? 999999)
-        stack.push({ label: `${s.label} ${alt}`, sortAlt })
-      }
-
-      for (const a of airspaces) {
-        if (a.state === 'ARCHIVED') continue
-        if (!a.keypads.includes(keypadId)) continue
-        const { altitude } = a
-        const alt =
-          altitude.kind === 'SINGLE'
-            ? `${altitude.singleFt}`
-            : `${altitude.minFt}-${altitude.maxFt}`
-        const sortAlt = altitude.kind === 'SINGLE' ? altitude.singleFt : altitude.maxFt
-        stack.push({ label: `${a.ownerCallsign} ${alt}`, sortAlt })
-      }
-
-      stack.sort((x, y) => y.sortAlt - x.sortAlt)
-      const lines = [keypadId, ...stack.map(s => s.label)]
-      return lines.join('\n')
-    }
-
-    return ''
-  }, [hover, airspaces, shapes, scope])
+  const hoverText = useHoverText(hover, airspaces, shapes, scope)
 
   return (
     <div className="bottomRight">
