@@ -588,6 +588,12 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* Skip layout/paint for collapsed accordion content (rendering-content-visibility) */
+.table [data-rac][role="region"][hidden] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 0px;
+}
+
 /* Section label in accordion body */
 .table [role="group"][data-rac] label {
   font-size: 12px;

@@ -68,11 +68,11 @@ export default memo(function CreateAirspaceModal({
         <>
           <DialogTitle>{title}</DialogTitle>
           <DialogContent>
-            {note && (
+            {note ? (
               <p className="fg-primary-muted text-body-s" style={{ margin: '0 0 12px 0' }}>
                 {note}
               </p>
-            )}
+            ) : null}
             <div style={S_MODAL_GRID}>
               <TextField
                 label="Callsign / Name"

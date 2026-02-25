@@ -156,8 +156,7 @@ export default memo(function MapView() {
     return {
       type: 'FeatureCollection',
       features: airspaces
-        .filter(a => a.state !== 'ARCHIVED')
-        .filter(a => !(a.state === 'COLD' && !a.showCold))
+        .filter(a => a.state !== 'ARCHIVED' && !(a.state === 'COLD' && !a.showCold))
         .sort((a, b) => {
           // Z-ordering: KEYPAD below FREEDRAW, then lower altitude below higher
           const kindOrder = a.kind === 'KEYPAD' ? 0 : 1
@@ -913,7 +912,7 @@ export default memo(function MapView() {
             )}
           </button>
 
-          {!toolsMinimized && (
+          {!toolsMinimized ? (
             <>
               <div className="section">
                 <Switch
@@ -1052,7 +1051,7 @@ export default memo(function MapView() {
                 >
                   Picasso mode
                 </Switch>
-                {picassoMode && (
+                {picassoMode ? (
                   <Slider
                     label="Offset radius"
                     minValue={4}
@@ -1067,10 +1066,10 @@ export default memo(function MapView() {
                     showValueLabels={false}
                     layout="grid"
                   />
-                )}
+                ) : null}
               </div>
             </>
-          )}
+          ) : null}
 
           <div className="section">
             <SelectField

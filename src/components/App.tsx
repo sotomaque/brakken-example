@@ -1,14 +1,16 @@
 import { Button } from '@accelint/design-toolkit'
 import { PanelClosed, PanelOpen } from '@accelint/icons'
+import dynamic from 'next/dynamic'
 import { Activity, useCallback, useEffect, useRef, useState } from 'react'
 import CreateAirspaceModal from './CreateAirspaceModal'
 import HoverAndChat from './HoverAndChat'
 import MapView from './MapView'
 import RightPanel from './RightPanel'
-import SpamAd from './SpamAd'
 import { type EditMode, useAppStore } from '@/store'
 import type { AirspaceState, Altitude } from '@/lib/types'
 import { deriveKeypadsFromPolygon } from '@/lib/utils'
+
+const SpamAd = dynamic(() => import('./SpamAd'), { ssr: false })
 
 type PendingCreate =
   | null

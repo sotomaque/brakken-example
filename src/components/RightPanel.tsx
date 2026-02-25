@@ -18,7 +18,15 @@ import {
   TextField,
 } from '@accelint/design-toolkit'
 import { AlertBase, Delete, Edit, Grid, PolygonTool } from '@accelint/icons'
-import { type CSSProperties, type MouseEvent, memo, useCallback, useMemo, useState } from 'react'
+import {
+  type CSSProperties,
+  type MouseEvent,
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+} from 'react'
 import type { Key } from 'react-aria-components'
 import { useAppStore } from '@/store'
 import type { Aircraft, AirspaceReservation } from '@/lib/types'
@@ -195,16 +203,16 @@ const AirspaceRow = memo(function AirspaceRow({
               </Chip>
               <Chip size="small">{a.kind}</Chip>
               <Chip size="small">{fmtAlt(a.altitude)} ft</Chip>
-              {conflict && (
+              {conflict ? (
                 <Chip color="critical" size="small">
                   CONFLICT
                 </Chip>
-              )}
+              ) : null}
             </div>
           </div>
         </AccordionTrigger>
         <div style={S_FLEX_ROW} onClick={e => e.stopPropagation()}>
-          {conflict && (
+          {conflict ? (
             <Button
               variant="icon"
               size="xsmall"
@@ -217,9 +225,9 @@ const AirspaceRow = memo(function AirspaceRow({
             >
               <AlertBase width={14} height={14} />
             </Button>
-          )}
+          ) : null}
 
-          {a.state === 'COLD' && (
+          {a.state === 'COLD' ? (
             <Button
               variant="outline"
               size="xsmall"
@@ -227,7 +235,7 @@ const AirspaceRow = memo(function AirspaceRow({
             >
               {a.showCold ? 'Hide' : 'Show'}
             </Button>
-          )}
+          ) : null}
 
           <Button
             variant="outline"
@@ -421,7 +429,7 @@ const AirspaceRow = memo(function AirspaceRow({
             >
               <Delete width={14} height={14} /> Archive
             </Button>
-            {activeTab === 'ARCHIVED' && (
+            {activeTab === 'ARCHIVED' ? (
               <Button
                 variant="outline"
                 size="small"
@@ -430,7 +438,7 @@ const AirspaceRow = memo(function AirspaceRow({
               >
                 Delete
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </AccordionPanel>
@@ -452,6 +460,8 @@ export default memo(function RightPanel() {
   const setActiveTab = useAppStore(s => s.setActiveTab)
   const setScope = useAppStore(s => s.setScope)
   const duplicateAirspace = useAppStore(s => s.duplicateAirspace)
+
+  const [, startTransition] = useTransition()
 
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set())
   const [ctx, setCtx] = useState<{ x: number; y: number; airspaceId: string } | null>(null)
@@ -534,7 +544,9 @@ export default memo(function RightPanel() {
 
         <Tabs
           selectedKey={activeTab}
-          onSelectionChange={key => setActiveTab(key as 'ACTIVE' | 'PLANNED' | 'ARCHIVED')}
+          onSelectionChange={key =>
+            startTransition(() => setActiveTab(key as 'ACTIVE' | 'PLANNED' | 'ARCHIVED'))
+          }
         >
           <TabList style={S_TAB_LIST}>
             <Tab id="ACTIVE">Active</Tab>
@@ -548,12 +560,14 @@ export default memo(function RightPanel() {
             label="Scope"
             size="small"
             selectedKey={scopeKey}
-            onSelectionChange={key => {
-              const v = String(key)
-              if (v === 'AOR') setScope({ kind: 'AOR' })
-              else if (v.startsWith('K:')) setScope({ kind: 'KILLBOX', killbox: v.slice(2) })
-              else if (v.startsWith('R:')) setScope({ kind: 'AREA', areaId: v.slice(2) })
-            }}
+            onSelectionChange={key =>
+              startTransition(() => {
+                const v = String(key)
+                if (v === 'AOR') setScope({ kind: 'AOR' })
+                else if (v.startsWith('K:')) setScope({ kind: 'KILLBOX', killbox: v.slice(2) })
+                else if (v.startsWith('R:')) setScope({ kind: 'AREA', areaId: v.slice(2) })
+              })
+            }
           >
             <OptionsItem id="AOR">Entire AOR</OptionsItem>
             <OptionsSection header="Inside Killbox">
@@ -612,7 +626,7 @@ export default memo(function RightPanel() {
         </div>
       </div>
 
-      {ctx && (
+      {ctx ? (
         <div
           style={{ ...S_CTX_MENU, left: ctx.x, top: ctx.y }}
           onMouseDown={e => e.stopPropagation()}
@@ -642,7 +656,7 @@ export default memo(function RightPanel() {
             Archive
           </Button>
         </div>
-      )}
+      ) : null}
     </div>
   )
 })

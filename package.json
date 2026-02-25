@@ -40,8 +40,6 @@
     "@react-types/shared": "~3.32.0",
     "@tanstack/react-table": "^8.21.3",
     "client-only": "^0.0.1",
-    "clsx": "^2.1.1",
-    "loglayer": "^9.1.0",
     "maplibre-gl": "^4.7.1",
     "media-chrome": "^4.18.0",
     "next": "^16.1.0",
