@@ -20,7 +20,7 @@ import HoverAndChat from './HoverAndChat'
 import RightPanel from './RightPanel'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
-const SpamAd = dynamic(() => import('./SpamAd'), { ssr: false })
+const SpamAd = dynamic(() => import('./SpamAd'), { ssr: false, loading: () => null })
 
 type PendingCreate =
   | null
@@ -28,6 +28,7 @@ type PendingCreate =
   | { kind: 'FREEDRAW'; drawType: 'POLYGON' | 'ROUTE' | 'POINT'; coords: [number, number][] }
 
 const S_GRID = { display: 'grid', gridTemplateRows: '1fr auto', height: '100%' } as const
+const S_DRAWER_LAYOUT: React.CSSProperties = { height: '100vh' }
 const S_TOGGLE_BTN: React.CSSProperties = {
   position: 'absolute',
   top: 10,
@@ -185,7 +186,7 @@ export default function App() {
   return (
     <>
       <SpamAd />
-      <DrawerLayout push="right" style={{ height: '100vh' }}>
+      <DrawerLayout push="right" style={S_DRAWER_LAYOUT}>
         <DrawerLayoutMain>
           <div className="mapWrap">
             <MapView />

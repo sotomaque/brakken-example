@@ -4,6 +4,13 @@ import type { Altitude, LatLon } from './types'
 const LAT_LON_RE = /^([NS])(\d{2}):([0-5]\d(?:\.\d+)?)\s+([EW])(\d{3}):([0-5]\d(?:\.\d+)?)$/
 const TIME_Z_RE = /^(\d{2}):(\d{2}):(\d{2})Z$/
 
+// Hoisted RegExp for parseKeypadString (avoid re-creation per call)
+const ALL_MATCH_RE = /^(\d{2}[A-Z]{2})\s*\(all\)$/i
+const ALL_MATCH_RE2 = /^(\d{2}[A-Z]{2})\s*\(all\)\s*$/i
+const KB_DIGITS_RE = /^(\d{2}[A-Z]{2})([1-9]+)$/i
+const SINGLE_KP_RE = /^(\d{2}[A-Z]{2}[1-9])$/i
+const KB_ONLY_RE = /^(\d{2}[A-Z]{2})$/i
+
 export const AOR = {
   // N01:18.00 E121:08.00 etc
   nw: { lat: 1 + 18 / 60, lon: 121 + 8 / 60 },
@@ -310,15 +317,14 @@ export function parseKeypadString(input: string): ParseKeypadResult {
 
   for (const p of parts) {
     // Handle "(all)" e.g. "23AG (all)" or "23AG(all)"
-    const allMatch =
-      p.match(/^(\d{2}[A-Z]{2})\s*\(all\)$/i) || p.match(/^(\d{2}[A-Z]{2})\s*\(all\)\s*$/i)
+    const allMatch = p.match(ALL_MATCH_RE) || p.match(ALL_MATCH_RE2)
     if (allMatch) {
       out.push(...allKeypadsInKillbox(allMatch[1].toUpperCase()))
       continue
     }
 
     // Handle killbox + digits cluster e.g. 23AG89, 22AF124578
-    const m = p.match(/^(\d{2}[A-Z]{2})([1-9]+)$/i)
+    const m = p.match(KB_DIGITS_RE)
     if (m) {
       const kb = m[1].toUpperCase()
       const digits = m[2].split('')
@@ -327,14 +333,14 @@ export function parseKeypadString(input: string): ParseKeypadResult {
     }
 
     // Handle explicit single keypad like 23AF5
-    const m2 = p.match(/^(\d{2}[A-Z]{2}[1-9])$/i)
+    const m2 = p.match(SINGLE_KP_RE)
     if (m2) {
       out.push(m2[1].toUpperCase())
       continue
     }
 
     // Handle killbox alone -> treat as ambiguous unless "(all)"
-    const kbOnly = p.match(/^(\d{2}[A-Z]{2})$/i)
+    const kbOnly = p.match(KB_ONLY_RE)
     if (kbOnly) {
       warned =
         warned || 'Killbox without (all) is ambiguous. Use e.g. "23AG (all)" or specify digits.'

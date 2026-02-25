@@ -152,10 +152,10 @@ export default memo(function SpamAd() {
         {enabled ? 'ADS: ON' : 'ADS: OFF'}
       </button>
 
-      {enabled && (
+      {enabled ? (
         <>
           {/* ── Top banner ── */}
-          {!bannerDismissed && (
+          {!bannerDismissed ? (
             <div className="spamBanner">
               <img src="/expressvpn-banner.png" alt="ExpressVPN" className="spamBannerImg" />
               <span className="spamBannerText">
@@ -178,18 +178,18 @@ export default memo(function SpamAd() {
                 ✕
               </button>
             </div>
-          )}
+          ) : null}
 
           {/* ── Popups — multiple can stack ── */}
-          {popups.length > 0 && (
+          {popups.length > 0 ? (
             <div className="spamOverlay">
               {popups.map(id => (
                 <AdPopup key={id} id={id} onClose={handlePopupClose} />
               ))}
             </div>
-          )}
+          ) : null}
         </>
-      )}
+      ) : null}
     </>
   )
 })

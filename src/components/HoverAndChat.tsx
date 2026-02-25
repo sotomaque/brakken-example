@@ -99,13 +99,15 @@ ${kp}`
         stack.push({ label: `${s.label} ${alt}`, sortAlt })
       }
 
-      for (const a of airspaces.filter(a => a.state !== 'ARCHIVED')) {
+      for (const a of airspaces) {
+        if (a.state === 'ARCHIVED') continue
         if (!a.keypads.includes(keypadId)) continue
+        const { altitude } = a
         const alt =
-          a.altitude.kind === 'SINGLE'
-            ? `${a.altitude.singleFt}`
-            : `${a.altitude.minFt}-${a.altitude.maxFt}`
-        const sortAlt = a.altitude.kind === 'SINGLE' ? a.altitude.singleFt : a.altitude.maxFt
+          altitude.kind === 'SINGLE'
+            ? `${altitude.singleFt}`
+            : `${altitude.minFt}-${altitude.maxFt}`
+        const sortAlt = altitude.kind === 'SINGLE' ? altitude.singleFt : altitude.maxFt
         stack.push({ label: `${a.ownerCallsign} ${alt}`, sortAlt })
       }
 
@@ -148,14 +150,20 @@ ${kp}`
             <Button
               variant="outline"
               size="small"
-              onPress={() => setCurrentTimeSec(Math.max(0, currentTimeSec - 30))}
+              onPress={() => {
+                const cur = useAppStore.getState().currentTimeSec
+                setCurrentTimeSec(Math.max(0, cur - 30))
+              }}
             >
               -30s
             </Button>
             <Button
               variant="outline"
               size="small"
-              onPress={() => setCurrentTimeSec(currentTimeSec + 30)}
+              onPress={() => {
+                const cur = useAppStore.getState().currentTimeSec
+                setCurrentTimeSec(cur + 30)
+              }}
             >
               +30s
             </Button>

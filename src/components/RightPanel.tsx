@@ -107,6 +107,13 @@ const S_CTX_LABEL: CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
 }
+const S_CONFLICT_BORDER: CSSProperties = {
+  borderColor: 'var(--danger2)',
+  background: 'rgba(177,49,49,0.12)',
+}
+const S_CALLSIGN: CSSProperties = { fontSize: 14 }
+const S_CTX_BTN_FULL: CSSProperties = { width: '100%', marginBottom: 6 }
+const S_CTX_BTN_FULL_LAST: CSSProperties = { width: '100%' }
 
 const KILLBOX_OPTIONS = [
   '23AF',
@@ -185,9 +192,7 @@ const AirspaceRow = memo(function AirspaceRow({
     <Accordion
       id={a.id}
       variant="compact"
-      style={
-        conflict ? { borderColor: 'var(--danger2)', background: 'rgba(177,49,49,0.12)' } : undefined
-      }
+      style={conflict ? S_CONFLICT_BORDER : undefined}
       onContextMenu={(e: React.MouseEvent) => {
         e.preventDefault()
         onContextMenu(e as unknown as MouseEvent, a.id)
@@ -196,7 +201,7 @@ const AirspaceRow = memo(function AirspaceRow({
       <AccordionHeader style={isSelected ? S_SELECTED_OUTLINE : S_NO_OUTLINE}>
         <AccordionTrigger>
           <div style={S_FLEX_ROW_10}>
-            <strong style={{ fontSize: 14 }}>{a.ownerCallsign}</strong>
+            <strong style={S_CALLSIGN}>{a.ownerCallsign}</strong>
             <div style={S_FLEX_ROW}>
               <Chip color={chipColor(a.state)} size="small">
                 {a.state}
@@ -455,7 +460,9 @@ export default memo(function RightPanel() {
   const activeTab = useAppStore(s => s.activeTab)
   const scope = useAppStore(s => s.scope)
   const shapes = useAppStore(s => s.shapes)
-  const selectedId = useAppStore(s => s.selectedId)
+  const selectedAirspaceId = useAppStore(s =>
+    s.selectedId.kind === 'AIRSPACE' ? s.selectedId.id : null,
+  )
 
   const setActiveTab = useAppStore(s => s.setActiveTab)
   const setScope = useAppStore(s => s.setScope)
@@ -470,16 +477,25 @@ export default memo(function RightPanel() {
 
   const conflictSet = useMemo(() => {
     const map = new Map<string, ConflictInfo>()
+    const overlapSets = new Map<string, Set<string>>()
     for (const c of conflicts) {
       const add = (id: string, otherId: string) => {
         const prev = map.get(id) || { count: 0, others: [], overlap: [] }
         prev.count += 1
         prev.others.push(otherId)
-        prev.overlap = Array.from(new Set([...prev.overlap, ...c.overlappingKeypads]))
+        let s = overlapSets.get(id)
+        if (!s) {
+          s = new Set()
+          overlapSets.set(id, s)
+        }
+        for (const kp of c.overlappingKeypads) s.add(kp)
         map.set(id, prev)
       }
       add(c.aId, c.bId)
       add(c.bId, c.aId)
+    }
+    for (const [id, info] of map) {
+      info.overlap = Array.from(overlapSets.get(id)!)
     }
     return map
   }, [conflicts])
@@ -615,7 +631,7 @@ export default memo(function RightPanel() {
                 key={a.id}
                 a={a}
                 conflict={conflictSet.get(a.id)}
-                isSelected={selectedId.kind === 'AIRSPACE' && selectedId.id === a.id}
+                isSelected={selectedAirspaceId === a.id}
                 owner={aircraftByCallsign.get(a.ownerCallsign)}
                 activeTab={activeTab}
                 allAircraft={aircraft}
@@ -639,7 +655,7 @@ export default memo(function RightPanel() {
               duplicateAirspace(ctx.airspaceId)
               setCtx(null)
             }}
-            style={{ width: '100%', marginBottom: 6 }}
+            style={S_CTX_BTN_FULL}
           >
             Duplicate
           </Button>
@@ -651,7 +667,7 @@ export default memo(function RightPanel() {
               useAppStore.getState().updateAirspace(ctx.airspaceId, { state: 'ARCHIVED' })
               setCtx(null)
             }}
-            style={{ width: '100%' }}
+            style={S_CTX_BTN_FULL_LAST}
           >
             Archive
           </Button>

@@ -12,6 +12,7 @@ import { type CSSProperties, memo, useEffect, useState } from 'react'
 import type { AirspaceState, Altitude } from '@/lib/types'
 
 const S_MODAL_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }
+const S_NOTE: CSSProperties = { margin: '0 0 12px 0' }
 
 type Props = {
   open: boolean
@@ -69,7 +70,7 @@ export default memo(function CreateAirspaceModal({
           <DialogTitle>{title}</DialogTitle>
           <DialogContent>
             {note ? (
-              <p className="fg-primary-muted text-body-s" style={{ margin: '0 0 12px 0' }}>
+              <p className="fg-primary-muted text-body-s" style={S_NOTE}>
                 {note}
               </p>
             ) : null}

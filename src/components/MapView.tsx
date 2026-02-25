@@ -14,6 +14,7 @@ import {
   unregisterHotkey,
 } from '@accelint/hotkey-manager'
 import { ChevronDown, ChevronRight, Keyboard, Layers } from '@accelint/icons'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import maplibregl, { Map as MLMap } from 'maplibre-gl'
 import { type CSSProperties, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { gridLinesGeoJSON, keypadPolygonsGeoJSON, killboxLabelsGeoJSON } from '@/lib/grid'
@@ -262,7 +263,7 @@ export default memo(function MapView() {
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left')
 
-    map.on('load', async () => {
+    map.on('load', () => {
       // 1) Sources
       map.addSource(GRID_LINES_SOURCE, { type: 'geojson', data: gridLines })
       map.addSource(GRID_LABELS_SOURCE, { type: 'geojson', data: gridLabels })
