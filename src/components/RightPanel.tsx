@@ -45,6 +45,7 @@ const QUICK_COLORS = [
 const S_FLEX_ROW: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center' }
 const S_FLEX_ROW_10: CSSProperties = { display: 'flex', gap: 10, alignItems: 'center' }
 const S_FLEX_GAP8: CSSProperties = { display: 'flex', gap: 8 }
+const S_HEADER_BUTTONS: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }
 const S_SPAN2: CSSProperties = { gridColumn: 'span 2' }
 const S_MUTED_SMALL: CSSProperties = { color: 'var(--muted)', fontSize: 12 }
 const S_STYLE_BOX: CSSProperties = {
@@ -540,7 +541,7 @@ export default memo(function RightPanel() {
             <strong>Airspace Deconfliction</strong>
             <span style={S_MUTED_SMALL}>Top-down keypad stack</span>
           </div>
-          <div style={S_FLEX_GAP8}>
+          <div style={S_HEADER_BUTTONS}>
             <Button
               variant="outline"
               size="small"

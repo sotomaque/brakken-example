@@ -673,6 +673,9 @@ body {
   border-top: 1px solid var(--border);
   padding-top: 8px;
   margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* Compact design-toolkit components inside overlay panel */
