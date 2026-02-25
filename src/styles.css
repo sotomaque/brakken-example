@@ -20,6 +20,7 @@
 @layer components.l1 {
   .group\/drawer:where([open], [data-open], :open) > div {
     display: flex;
+    padding: 0;
   }
 
   .group\/drawer:where([data-size="large"]):where(
@@ -68,6 +69,170 @@
     )
     > div {
     height: var(--drawer-size-small);
+  }
+}
+
+/* ───── Switch group-variant fix ─────
+   Same Turbopack hashing bug: "group/switch" is raw in the DOM but hashed in
+   the CSS module selectors. These rules use the unhashed class + structural
+   child selectors (span:first-child = control, span:last-child = label). */
+@layer components.l1 {
+  /* Control — hover */
+  .group\/switch:where([data-hovered], :hover) > span:first-child {
+    --bg-value: var(--bg-interactive-muted-hover);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+    --outline-value: var(--outline-interactive-hover);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-hovered], :hover) > span:first-child::before {
+    background-color: var(--fg-primary-bold);
+  }
+
+  /* Control — focus-visible */
+  .group\/switch:where([data-focus-visible], :focus-visible) > span:first-child {
+    --bg-value: var(--bg-interactive-muted-hover);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+    --outline-value: var(--outline-interactive-hover);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-focus-visible], :focus-visible) > span:first-child::before {
+    background-color: var(--fg-primary-bold);
+  }
+
+  /* Control — pressed */
+  .group\/switch:where([data-pressed], :active) > span:first-child {
+    --bg-value: var(--bg-interactive-muted-pressed);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+    --outline-value: var(--outline-interactive-pressed);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-pressed], :active) > span:first-child::before {
+    background-color: var(--fg-pressed);
+  }
+
+  /* Control — selected */
+  .group\/switch:where([data-selected], :checked) > span:first-child {
+    --outline-value: var(--outline-accent-primary-bold);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-selected], :checked) > span:first-child::before {
+    margin-right: var(--spacing-0, 0px);
+    margin-left: var(--spacing-l, 16px);
+    background-color: var(--fg-accent-primary-bold);
+  }
+
+  /* Control — selected + hover */
+  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover) > span:first-child {
+    --bg-value: var(--bg-accent-primary-muted);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+    --outline-value: var(--outline-accent-primary-bold);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-selected], :checked):where([data-hovered], :hover) > span:first-child::before {
+    background-color: var(--fg-accent-primary-hover);
+  }
+
+  /* Control — selected + focus-visible */
+  .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible) > span:first-child {
+    --bg-value: var(--bg-accent-primary-muted);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+    --outline-value: var(--outline-interactive-hover);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-selected], :checked):where([data-focus-visible], :focus-visible) > span:first-child::before {
+    background-color: var(--fg-accent-primary-hover);
+  }
+
+  /* Control — selected + pressed */
+  .group\/switch:where([data-selected], :checked):where([data-pressed], :active) > span:first-child {
+    --bg-value: var(--bg-accent-primary-pressed);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+    --outline-value: var(--outline-accent-primary-pressed);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+  }
+  .group\/switch:where([data-selected], :checked):where([data-pressed], :active) > span:first-child::before {
+    background-color: var(--fg-accent-primary-pressed);
+  }
+
+  /* Control — disabled */
+  .group\/switch:where([disabled], [data-disabled], :disabled) > span:first-child {
+    --outline-value: var(--outline-interactive-disabled);
+    outline-color: rgb(from var(--outline-value) r g b / var(--outline-alpha, alpha));
+    background-color: #0000;
+  }
+  .group\/switch:where([disabled], [data-disabled], :disabled) > span:first-child::before {
+    background-color: var(--fg-disabled);
+  }
+
+  /* Control — disabled + selected */
+  .group\/switch:where([disabled], [data-disabled], :disabled):where([data-selected], :checked) > span:first-child {
+    --bg-value: var(--bg-interactive-disabled);
+    background-color: rgb(from var(--bg-value) r g b / var(--bg-alpha, alpha));
+  }
+
+  /* Label — disabled */
+  .group\/switch:where([disabled], [data-disabled], :disabled) > span:last-child {
+    --fg-value: var(--fg-disabled);
+    --fg-color: rgb(from var(--fg-value) r g b / var(--fg-alpha, alpha));
+    --icon-color: var(--fg-color);
+    color: var(--fg-color);
+  }
+}
+
+/* ───── Slider group-variant fix ─────
+   Same Turbopack hashing bug: "group/slider" is raw in the DOM but hashed in
+   the CSS module selectors. Child elements are targeted via structural and
+   attribute selectors:
+     :has(> [role="slider"])       → SliderTrack (parent of thumb)
+     :first-child inside track    → trackBackground (the visible line)
+     :has(+ [role="slider"])      → trackValue (filled portion before thumb)
+     [role="slider"]              → SliderThumb
+     > label                      → slider label */
+@layer components.l1 {
+  /* Track container — horizontal dimensions */
+  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"]) {
+    width: 100%;
+    height: 20px;
+  }
+
+  /* Track — horizontal + grid placement */
+  .group\/slider:where([data-orientation="horizontal"]):where([data-layout="grid"]) :has(> [role="slider"]) {
+    grid-column: span 3 / span 3;
+    grid-row-start: 2;
+  }
+
+  /* Track background (line) — horizontal */
+  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"]) > :first-child {
+    height: var(--spacing-xxs, 2px);
+    width: 100%;
+    top: 50%;
+    --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+
+  /* Track value (filled portion) — horizontal */
+  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"]) > :has(+ [role="slider"]) {
+    height: var(--spacing-xxs, 2px);
+    top: 50%;
+    --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+    left: calc(var(--track-value-start) * 100%);
+    right: calc(100% - var(--track-value-end) * 100%);
+  }
+
+  /* Thumb — horizontal centering */
+  .group\/slider:where([data-orientation="horizontal"]) [role="slider"] {
+    top: 50%;
+  }
+
+  /* Label — grid placement */
+  .group\/slider:where([data-layout="grid"]) > label {
+    grid-column-start: 1;
+  }
+
+  /* Label — vertical + grid: span all columns */
+  .group\/slider:where([data-orientation="vertical"]):where([data-layout="grid"]) > label {
+    grid-column: span 3 / span 3;
   }
 }
 
@@ -329,9 +494,8 @@ body {
 .rightPanel {
   display: grid;
   grid-template-rows: 1fr auto;
-  border-left: 1px solid var(--border);
   background: var(--panel);
-  min-width: 360px;
+  overflow: hidden;
 }
 
 .tablePanel {
@@ -506,57 +670,10 @@ body {
   font-size: 12px;
 }
 
-/* Switch components — fix track visibility & state in overlay.
-   The design-toolkit's CSS module scopes the Tailwind group/switch class,
-   breaking state variant selectors. These overrides use the actual DOM class. */
+/* Switch layout in overlay panel */
 .mapTools label.group\/switch {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 8px;
   margin-bottom: 4px;
-  cursor: pointer;
-}
-.mapTools label.group\/switch > span:first-child {
-  background-color: rgba(255, 255, 255, 0.06);
-  outline: 1.5px solid rgba(159, 177, 197, 0.25);
-  outline-offset: -1px;
-  border-radius: 80px;
-  padding: 2px;
-  display: flex;
-  flex-shrink: 0;
-  transition:
-    background-color 0.15s,
-    outline-color 0.15s;
-}
-.mapTools label.group\/switch > span:first-child::before {
-  content: "";
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: 9999px;
-  background-color: var(--muted);
-  margin-right: 14px;
-  transition:
-    margin 0.15s,
-    background-color 0.15s;
-}
-.mapTools label.group\/switch[data-selected] > span:first-child {
-  background-color: rgba(75, 163, 255, 0.15);
-  outline-color: var(--accent);
-}
-.mapTools label.group\/switch[data-selected] > span:first-child::before {
-  margin-right: 0;
-  margin-left: 14px;
-  background-color: var(--accent);
-}
-.mapTools label.group\/switch:hover > span:first-child {
-  background-color: rgba(255, 255, 255, 0.1);
-  outline-color: rgba(159, 177, 197, 0.4);
-}
-.mapTools label.group\/switch[data-selected]:hover > span:first-child {
-  background-color: rgba(75, 163, 255, 0.22);
-  outline-color: var(--accent);
 }
 
 /* Tighten Slider components in overlay */
