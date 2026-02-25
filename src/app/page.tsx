@@ -3,7 +3,7 @@ import { ClientApp } from '@/components/client-app'
 
 export default function Page() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <ClientApp />
     </Suspense>
   )

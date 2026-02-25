@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import type { AirspaceReservation, FreeDrawShape, Scope } from '@/lib/types'
 import { fmtAlt } from '@/lib/utils'
 import type { HoverInfo } from '@/store'
@@ -84,8 +83,5 @@ export function useHoverText(
   shapes: FreeDrawShape[],
   scope: Scope,
 ): string {
-  return useMemo(
-    () => buildHoverText(hover, airspaces, shapes, scope),
-    [hover, airspaces, shapes, scope],
-  )
+  return buildHoverText(hover, airspaces, shapes, scope)
 }

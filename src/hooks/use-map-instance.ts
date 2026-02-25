@@ -64,7 +64,8 @@ export function useMapInstance(
   const hoverRafRef = useRef(0)
   const pendingHoverRef = useRef<HoverInfo | null>(null)
 
-  // Init map
+  // Init map — runs once; data updates handled by separate effects below.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: init-once effect
   useEffect(() => {
     if (mapDidInit) return
     mapDidInit = true
@@ -415,17 +416,7 @@ export function useMapInstance(
       mapDidInit = false
       if (containerRef.current) containerRef.current.innerHTML = ''
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    airspacesGeo,
-    containerRef.current,
-    gridLabels,
-    gridLines,
-    handleMapClick,
-    keypadsGeo,
-    refsGeo,
-    shapesGeo,
-  ])
+  }, [])
 
   // Update sources when data changes
   useEffect(() => {
