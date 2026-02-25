@@ -7,7 +7,7 @@ export function gridLinesGeoJSON() {
   const totalCols = 12
   const totalRows = 9
 
-  const pushLine = (coords: [number, number][], props: Record<string, any>) => {
+  const pushLine = (coords: [number, number][], props: Record<string, string>) => {
     features.push({
       type: 'Feature',
       properties: props,

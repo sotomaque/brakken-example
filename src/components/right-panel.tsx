@@ -202,6 +202,8 @@ const AirspaceRow = memo(function AirspaceRow({
             </div>
           </div>
         </AccordionTrigger>
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: event containment for accordion header buttons */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: event containment for accordion header buttons */}
         <div style={S_FLEX_ROW} onClick={e => e.stopPropagation()}>
           {conflict ? (
             <Button
@@ -480,6 +482,8 @@ export default memo(function RightPanel() {
   )
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: click-outside-to-dismiss context menu
+    // biome-ignore lint/a11y/noStaticElementInteractions: click-outside-to-dismiss context menu
     <div className="rightPanel" onClick={() => ctx && setCtx(null)}>
       <div className="tablePanel">
         <div className="panelHeader">
@@ -591,6 +595,7 @@ export default memo(function RightPanel() {
 
       {ctx ? (
         <div
+          role="menu"
           style={{ ...S_CTX_MENU, left: ctx.x, top: ctx.y }}
           onMouseDown={e => e.stopPropagation()}
         >

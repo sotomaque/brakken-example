@@ -296,6 +296,7 @@ export function useMapInstance(
             },
             layout: { visibility: 'none' },
           }
+          // biome-ignore lint/suspicious/noExplicitAny: MapLibre's LayerSpecification union doesn't narrow through conditional spread
           map.addLayer(layerDef as any)
         }
       }
@@ -423,14 +424,14 @@ export function useMapInstance(
     const map = mapRef.current
     if (!map) return
     const src = map.getSource(AIRSPACES_SOURCE) as maplibregl.GeoJSONSource | undefined
-    if (src) src.setData(airspacesGeo as any)
+    if (src) src.setData(airspacesGeo)
   }, [airspacesGeo])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
     const src = map.getSource(SHAPES_SOURCE) as maplibregl.GeoJSONSource | undefined
-    if (src) src.setData(shapesGeo as any)
+    if (src) src.setData(shapesGeo)
   }, [shapesGeo])
 
   // Apply layer toggles
