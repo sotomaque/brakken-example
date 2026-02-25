@@ -1,6 +1,6 @@
 import { Button } from '@accelint/design-toolkit'
 import { PanelClosed, PanelOpen } from '@accelint/icons'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Activity, useCallback, useEffect, useRef, useState } from 'react'
 import CreateAirspaceModal from './CreateAirspaceModal'
 import HoverAndChat from './HoverAndChat'
 import MapView from './MapView'
@@ -189,14 +189,14 @@ export default function App() {
           </Button>
         </div>
 
-        {panelOpen && (
+        <Activity mode={panelOpen ? 'visible' : 'hidden'}>
           <div className="rightPanel">
             <div style={S_GRID}>
               <RightPanel />
               <HoverAndChat />
             </div>
           </div>
-        )}
+        </Activity>
 
         <CreateAirspaceModal
           open={modalOpen}

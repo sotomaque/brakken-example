@@ -52,6 +52,15 @@ const S_MODE_LINE: CSSProperties = {
   color: 'var(--muted)',
   fontSize: 12,
 }
+const S_ICON_INLINE: CSSProperties = { verticalAlign: 'middle', marginRight: 4 }
+const S_GRID_COLOR_ROW: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  fontSize: 12,
+  color: 'var(--muted)',
+  marginBottom: 10,
+}
 const S_MAP_HEIGHT: CSSProperties = { height: '100%' }
 const GRID_COLOR_SWATCHES = [
   '#9fb1c5',
@@ -870,12 +879,7 @@ export default memo(function MapView() {
             title="Click to expand/collapse"
           >
             <h4 style={S_H4}>
-              <Keyboard
-                width={14}
-                height={14}
-                style={{ verticalAlign: 'middle', marginRight: 4 }}
-              />{' '}
-              Shortcuts
+              <Keyboard width={14} height={14} style={S_ICON_INLINE} /> Shortcuts
             </h4>
             {shortcutsMinimized ? (
               <ChevronRight width={14} height={14} style={S_COLLAPSE_ICON} />
@@ -900,8 +904,7 @@ export default memo(function MapView() {
             title="Click to expand/collapse"
           >
             <h4 style={S_H4}>
-              <Layers width={14} height={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{' '}
-              Grid & Layers
+              <Layers width={14} height={14} style={S_ICON_INLINE} /> Grid & Layers
             </h4>
             {toolsMinimized ? (
               <ChevronRight width={14} height={14} style={S_COLLAPSE_ICON} />
@@ -932,16 +935,7 @@ export default memo(function MapView() {
                   showValueLabels={false}
                   layout="grid"
                 />
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: 12,
-                    color: 'var(--muted)',
-                    marginBottom: 10,
-                  }}
-                >
+                <div style={S_GRID_COLOR_ROW}>
                   <span>Grid color</span>
                   <ColorPicker
                     items={GRID_COLOR_SWATCHES}
