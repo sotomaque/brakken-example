@@ -90,7 +90,7 @@ function AdPopup({ id, onClose }: { id: number; onClose: (id: number) => void })
 
 /* ─── Main SpamAd component ─── */
 export default memo(function SpamAd() {
-  const [enabled, setEnabled] = useState(true)
+  const [enabled, setEnabled] = useState(false)
   const [popups, setPopups] = useState<number[]>([])
   const nextId = useRef(0)
   const [bannerDismissed, setBannerDismissed] = useState(false)

@@ -1,6 +1,7 @@
 import { uuid } from '@accelint/core'
 import {
   Button,
+  ClassificationBanner,
   Drawer,
   DrawerContent,
   DrawerLayout,
@@ -186,6 +187,7 @@ export default function App() {
   return (
     <>
       <SpamAd />
+      <ClassificationBanner variant="unclassified" />
       <DrawerLayout push="right" style={S_DRAWER_LAYOUT}>
         <DrawerLayoutMain>
           <div className="mapWrap">

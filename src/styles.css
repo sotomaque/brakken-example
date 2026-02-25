@@ -191,48 +191,51 @@
 /* ───── Slider group-variant fix ─────
    Same Turbopack hashing bug: "group/slider" is raw in the DOM but hashed in
    the CSS module selectors. Child elements are targeted via structural and
-   attribute selectors:
-     :has(> [role="slider"])       → SliderTrack (parent of thumb)
-     :first-child inside track    → trackBackground (the visible line)
-     :has(+ [role="slider"])      → trackValue (filled portion before thumb)
-     [role="slider"]              → SliderThumb
-     > label                      → slider label */
+   attribute selectors based on the actual DOM:
+     > div[data-orientation]        → SliderTrack
+     track > :first-child           → trackBackground (the line)
+     track > :nth-child(2)          → trackValue (filled portion)
+     track > [data-rac]             → SliderThumb wrapper
+     > label                        → slider label */
 @layer components.l1 {
   /* Track container — horizontal dimensions */
-  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"]) {
+  .group\/slider:where([data-orientation="horizontal"]) > div[data-orientation] {
     width: 100%;
     height: 20px;
   }
 
   /* Track — horizontal + grid placement */
   .group\/slider:where([data-orientation="horizontal"]):where([data-layout="grid"])
-  :has(> [role="slider"]) {
+    > div[data-orientation] {
     grid-column: span 3 / span 3;
     grid-row-start: 2;
   }
 
   /* Track background (line) — horizontal */
-  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"]) > :first-child {
+  .group\/slider:where([data-orientation="horizontal"]) > div[data-orientation] > :first-child {
+    position: absolute;
     height: var(--spacing-xxs, 2px);
     width: 100%;
     top: 50%;
-    --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
-    translate: var(--tw-translate-x) var(--tw-translate-y);
+    border-radius: 9999px;
+    transform: translateY(-50%);
+    background-color: var(--bg-surface-muted, rgba(255, 255, 255, 0.15));
   }
 
   /* Track value (filled portion) — horizontal */
-  .group\/slider:where([data-orientation="horizontal"]) :has(> [role="slider"])
-    > :has(+ [role="slider"]) {
+  .group\/slider:where([data-orientation="horizontal"]) > div[data-orientation] > :nth-child(2) {
+    position: absolute;
     height: var(--spacing-xxs, 2px);
     top: 50%;
-    --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
-    translate: var(--tw-translate-x) var(--tw-translate-y);
+    border-radius: 9999px;
+    transform: translateY(-50%);
+    background-color: var(--fg-accent-primary-bold, #39b7fa);
     left: calc(var(--track-value-start) * 100%);
     right: calc(100% - var(--track-value-end) * 100%);
   }
 
   /* Thumb — horizontal centering */
-  .group\/slider:where([data-orientation="horizontal"]) [role="slider"] {
+  .group\/slider:where([data-orientation="horizontal"]) > div[data-orientation] > [data-rac] {
     top: 50%;
   }
 
