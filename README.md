@@ -30,6 +30,21 @@ bun dev
 
 The app will be available at **http://localhost:3000**.
 
+## Password Protection
+
+The app is password-protected via a server-side proxy (`src/proxy.ts`). All requests are checked for an auth cookie before any page or asset is served.
+
+**Local development:**
+
+```bash
+cp .env.example .env
+# Edit .env and set APP_PASSWORD to your desired password
+```
+
+**Vercel / production:**
+
+Add `APP_PASSWORD` as an environment variable in your Vercel project settings (Settings → Environment Variables).
+
 ## Scripts
 
 | Command | Description |
